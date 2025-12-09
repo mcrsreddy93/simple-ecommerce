@@ -384,7 +384,7 @@ async function loadCartPage() {
 }
 
 /* ===========================
-   Checkout Page Logic
+   Checkout Page Logic (With Delivery Address)
 =========================== */
 async function checkoutPageInit() {
     const page = document.body.getAttribute("data-page");
@@ -398,8 +398,70 @@ async function checkoutPageInit() {
     const paymentMethodSelect = document.getElementById("paymentMethod");
     const resultBox = document.getElementById("checkoutResult");
 
+    // address elements
+    const addressForm = document.getElementById("addressForm");
+    const addrFullName = document.getElementById("addrFullName");
+    const addrPhone = document.getElementById("addrPhone");
+    const addrLine1 = document.getElementById("addrLine1");
+    const addrLine2 = document.getElementById("addrLine2");
+    const addrCity = document.getElementById("addrCity");
+    const addrState = document.getElementById("addrState");
+    const addrPostal = document.getElementById("addrPostal");
+    const addrCountry = document.getElementById("addrCountry");
+
     let currentTotal = 0;
 
+    /* ------------------------------------
+       LOAD USER SAVED ADDRESS
+    ------------------------------------ */
+    async function loadSavedAddress() {
+        try {
+            const saved = await apiRequest("/api/user/address", "GET", null, true);
+
+            if (saved) {
+                // auto-fill fields
+                addrFullName.value = saved.full_name;
+                addrPhone.value = saved.phone;
+                addrLine1.value = saved.address_line1;
+                addrLine2.value = saved.address_line2;
+                addrCity.value = saved.city;
+                addrState.value = saved.state;
+                addrPostal.value = saved.postal_code;
+                addrCountry.value = saved.country;
+            }
+        } catch (err) {
+            console.log("No saved address");
+        }
+    }
+
+    /* ------------------------------------
+       SAVE ADDRESS - Runs when clicking Save Address
+    ------------------------------------ */
+    addressForm.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const data = {
+            full_name: addrFullName.value,
+            phone: addrPhone.value,
+            address_line1: addrLine1.value,
+            address_line2: addrLine2.value,
+            city: addrCity.value,
+            state: addrState.value,
+            postal_code: addrPostal.value,
+            country: addrCountry.value
+        };
+
+        try {
+            await apiRequest("/api/user/address", "POST", data, true);
+            showToast("Address saved!");
+        } catch (err) {
+            showToast("Failed to save address");
+        }
+    };
+
+    /* ------------------------------------
+       LOAD CART ITEMS
+    ------------------------------------ */
     async function loadCheckoutCart() {
         try {
             const cart = await apiRequest("/api/cart", "GET", null, true);
@@ -424,11 +486,11 @@ async function checkoutPageInit() {
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-          <td>${item.name}</td>
-          <td>${item.quantity}</td>
-          <td>₹${item.price}</td>
-          <td>₹${subtotal}</td>
-        `;
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>₹${item.price}</td>
+                    <td>₹${subtotal}</td>
+                `;
                 tbody.appendChild(row);
             });
 
@@ -439,9 +501,39 @@ async function checkoutPageInit() {
         }
     }
 
+    /* ------------------------------------
+       PLACE ORDER (Validate Address + Payment)
+    ------------------------------------ */
     form.onsubmit = async (e) => {
         e.preventDefault();
 
+        // CHECK ADDRESS FIRST
+        if (
+            !addrFullName.value ||
+            !addrPhone.value ||
+            !addrLine1.value ||
+            !addrCity.value ||
+            !addrState.value ||
+            !addrPostal.value ||
+            !addrCountry.value
+        ) {
+            showToast("Please enter complete delivery address");
+            return;
+        }
+
+        // SAVE ADDRESS before checkout
+        await apiRequest("/api/user/address", "POST", {
+            full_name: addrFullName.value,
+            phone: addrPhone.value,
+            address_line1: addrLine1.value,
+            address_line2: addrLine2.value,
+            city: addrCity.value,
+            state: addrState.value,
+            postal_code: addrPostal.value,
+            country: addrCountry.value
+        }, true);
+
+        // Continue with checkout
         const payment_method = paymentMethodSelect.value;
 
         try {
@@ -455,13 +547,12 @@ async function checkoutPageInit() {
             showToast("Order placed!");
             resultBox.classList.remove("hidden");
             resultBox.innerHTML = `
-        <strong>Success!</strong><br />
-        Order ID: ${res.order_id}<br />
-        Paid: ₹${res.total}<br />
-        Payment Method: ${res.payment_method}
-      `;
+                <strong>Success!</strong><br />
+                Order ID: ${res.order_id}<br />
+                Paid: ₹${res.total}<br />
+                Payment Method: ${res.payment_method}
+            `;
 
-            // reload cart & badge
             loadCheckoutCart();
             updateCartCount();
 
@@ -470,12 +561,14 @@ async function checkoutPageInit() {
             }, 2000);
         } catch (err) {
             showToast(err.message || "Checkout failed");
-            console.error(err);
         }
     };
 
+    /* INIT LOADS */
     loadCheckoutCart();
+    loadSavedAddress();
 }
+
 
 /* ============================================================
    ADMIN PANEL — PRODUCT MANAGEMENT

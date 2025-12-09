@@ -100,6 +100,24 @@ db.serialize(() => {
       FOREIGN KEY(product_id) REFERENCES products(id)
     )
   `);
+  // add user address table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    full_name TEXT,
+    phone TEXT,
+    address_line1 TEXT,
+    address_line2 TEXT,
+    city TEXT,
+    state TEXT,
+    postal_code TEXT,
+    country TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+  `);
 
   seedInitialData();
 });
@@ -551,6 +569,49 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
     );
   });
 });
+
+app.get("/api/user/address", authenticateToken, (req, res) => {
+    db.get(`SELECT * FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
+        if (err) return res.status(500).json({ message: "DB error" });
+        res.json(row || null);
+    });
+});
+
+app.post("/api/user/address", authenticateToken, (req, res) => {
+    const {
+        full_name,
+        phone,
+        address_line1,
+        address_line2,
+        city,
+        state,
+        postal_code,
+        country
+    } = req.body;
+
+    db.get(`SELECT id FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
+        if (row) {
+            // Update
+            db.run(`
+                UPDATE user_addresses 
+                SET full_name=?, phone=?, address_line1=?, address_line2=?, city=?, state=?, postal_code=?, country=?, updated_at=CURRENT_TIMESTAMP  
+                WHERE user_id=?
+            `, [full_name, phone, address_line1, address_line2, city, state, postal_code, country, req.user.id]);
+
+            res.json({ message: "Address updated" });
+        } else {
+            // Insert
+            db.run(`
+                INSERT INTO user_addresses 
+                (user_id, full_name, phone, address_line1, address_line2, city, state, postal_code, country)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [req.user.id, full_name, phone, address_line1, address_line2, city, state, postal_code, country]);
+
+            res.json({ message: "Address saved" });
+        }
+    });
+});
+
 
 // --- ADMIN ROUTES ---
 // Simple "admin panel" API
