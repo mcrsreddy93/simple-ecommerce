@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-page="home">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Shop - Simple Ecommerce</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="home">
+  <!-- Top Notification Bar -->
+  <div class="top-strip">
+    <span>Free shipping on orders over ₹999</span>
+  </div>
+
+  <!-- Main Navbar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <a href="index.html" class="brand">
+        <span class="brand-logo">🛒</span>
+        <span class="brand-text">MyShop</span>
+      </a>
+    </div>
+    <nav class="nav-center">
+      <a href="index.html" class="nav-link active">Home</a>
+      <a href="index.html#products" class="nav-link">Products</a>
+      <a href="cart.html" class="nav-link">Cart</a>
+      <a href="checkout.html" class="nav-link">Checkout</a>
+    </nav>
+    <div class="nav-right">
+      <div class="nav-user" id="navUserSection">
+        <!-- Filled by JS: Login / username -->
+        <a href="login.html" class="btn btn-light-outline" id="loginNavBtn">Login</a>
+        <a href="register.html" class="btn btn-primary" id="registerNavBtn">Register</a>
+      </div>
+      <a href="admin.html" class="nav-link nav-link-admin">Admin</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Simple & Beautiful Ecommerce Frontend</h1>
+      <p>Browse products, add to cart, checkout, and manage everything with a clean UI built on your Express + SQLite API.</p>
+      <div class="hero-actions">
+        <a href="#products" class="btn btn-primary">Shop Now</a>
+        <a href="cart.html" class="btn btn-light">View Cart</a>
+      </div>
+      <p class="hero-note">
+        Connected to: <code>http://localhost:5000</code> (you can change this in <code>assets/app.js</code>).
+      </p>
+    </div>
+    <div class="hero-illustration">
+      <div class="hero-card">
+        <h3>Today’s Deals</h3>
+        <ul>
+          <li>👕 T-Shirts starting at ₹499</li>
+          <li>🎧 Headphones under ₹2999</li>
+          <li>📱 Budget smartphones</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Products Section -->
+  <main class="page-content">
+    <section class="section" id="products">
+      <div class="section-header">
+        <div>
+          <h2>Products</h2>
+          <p class="section-subtitle">Browse items from your API with filters and search.</p>
+        </div>
+        <div class="filters-row">
+          <select id="filterCategory" class="input input-select">
+            <option value="">All Categories</option>
+          </select>
+          <input
+            id="filterSearch"
+            type="text"
+            class="input"
+            placeholder="Search products..."
+          />
+          <select id="filterPrice" class="input input-select">
+            <option value="">Any Price</option>
+            <option value="1">Under ₹1000</option>
+            <option value="2">₹1000 - ₹5000</option>
+            <option value="3">Above ₹5000</option>
+          </select>
+          <button id="filterApplyBtn" class="btn btn-light-outline">Apply</button>
+        </div>
+      </div>
+
+      <div id="productsGrid" class="products-grid">
+        <!-- Filled by JS -->
+      </div>
+
+      <div id="productsEmptyState" class="empty-state hidden">
+        <p>No products found.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Cart Button -->
+  <a href="cart.html" class="floating-cart-btn">
+    <span class="icon">🛒</span>
+    <span id="floatingCartCount">0</span>
+  </a>
+
+  <!-- Toast / Messages -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <h4>MyShop</h4>
+        <p>Simple demo store using Express, SQLite, and a clean frontend.</p>
+      </div>
+      <div>
+        <h4>Links</h4>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="cart.html">Cart</a></li>
+          <li><a href="checkout.html">Checkout</a></li>
+          <li><a href="admin.html">Admin Panel</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul>
+          <li><a href="login.html">Login</a></li>
+          <li><a href="register.html">Register</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-bottom">
+      &copy; <span id="footerYear"></span> MyShop. Built for learning.
+    </p>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

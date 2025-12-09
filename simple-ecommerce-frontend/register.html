@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-page="register">
+<head>
+  <meta charset="UTF-8" />
+  <title>MyShop - Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="register">
+
+  <div class="top-strip">Create your account</div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a href="index.html" class="brand"><span class="brand-logo">🛒</span><span class="brand-text">MyShop</span></a>
+    </div>
+  </header>
+
+  <main class="page-shell form-page">
+    <div class="card form-card">
+      <div class="card-header">
+        <h2>Register</h2>
+      </div>
+      <div class="card-body">
+        <form id="registerForm" class="form">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" class="input" name="name" required />
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="input" name="email" required />
+          </div>
+
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" class="input" name="password" required />
+          </div>
+
+          <button class="btn btn-primary" type="submit">Create Account</button>
+
+          <p class="form-note">
+            Already registered? <a href="login.html">Login</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

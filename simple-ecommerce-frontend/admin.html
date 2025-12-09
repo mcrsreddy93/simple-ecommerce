@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-page="admin">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>MyShop - Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+
+<body data-page="admin">
+
+    <!-- Top strip -->
+    <div class="top-strip">Admin Panel — Manage products, categories, users, and orders.</div>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand">
+                <span class="brand-logo">🛒</span>
+                <span class="brand-text">MyShop</span>
+            </a>
+        </div>
+        <div class="nav-right" id="navUserSection"></div>
+    </header>
+
+    <!-- Admin Layout -->
+    <main class="admin-layout">
+
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <h3>Admin Menu</h3>
+            <ul>
+                <li><button class="admin-tab-btn active" data-tab="dashboard">Dashboard</button></li>
+                <li><button class="admin-tab-btn" data-tab="products">Products</button></li>
+                <li><button class="admin-tab-btn" data-tab="categories">Categories</button></li>
+                <li><button class="admin-tab-btn" data-tab="users">Users</button></li>
+                <li><button class="admin-tab-btn" data-tab="orders">Orders</button></li>
+            </ul>
+        </aside>
+
+        <!-- Content Area -->
+        <section class="admin-content">
+
+            <!-- Dashboard -->
+            <div class="admin-tab active" id="tab-dashboard">
+                <h2>Dashboard</h2>
+                <div id="adminDashboardStats" class="dashboard-grid"></div>
+            </div>
+
+            <!-- Products -->
+            <div class="admin-tab" id="tab-products">
+                <h2>Products</h2>
+                <button id="adminAddProductBtn" class="btn btn-primary">+ Add Product</button>
+                <div id="adminProductsList" class="table-wrapper"></div>
+            </div>
+
+            <!-- Categories -->
+            <div class="admin-tab" id="tab-categories">
+                <h2>Categories</h2>
+                <button id="adminAddCategoryBtn" class="btn btn-primary">+ Add Category</button>
+                <div id="adminCategoriesList" class="table-wrapper"></div>
+            </div>
+
+            <!-- Users -->
+            <div class="admin-tab" id="tab-users">
+                <h2>Users</h2>
+                <div id="adminUsersList" class="table-wrapper"></div>
+            </div>
+
+            <!-- Orders -->
+            <div class="admin-tab" id="tab-orders">
+                <h2>Orders</h2>
+                <div id="adminOrdersList" class="table-wrapper"></div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Admin modals (Products + Categories) will be added in PART 5 -->
+    <!-- Product Modal -->
+    <div id="productModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="productModalTitle">Add Product</h3>
+            <form id="productForm" class="form">
+                <input type="hidden" id="productId" />
+
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" class="input" id="productName" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="input" id="productDescription"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="number" class="input" id="productPrice" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" class="input" id="productStock" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="productCategory" class="input input-select" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Image URL</label>
+                    <input type="text" class="input" id="productImage" />
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-light-outline" id="closeProductModal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="categoryModalTitle">Add Category</h3>
+
+            <form id="categoryForm" class="form">
+                <input type="hidden" id="categoryId" />
+
+                <div class="form-group">
+                    <label>Category Name</label>
+                    <input class="input" id="categoryName" required />
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" id="closeCategoryModal" class="btn btn-light-outline">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="assets/app.js"></script>
+</body>
+
+</html>

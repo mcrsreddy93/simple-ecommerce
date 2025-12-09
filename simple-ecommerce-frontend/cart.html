@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-page="cart">
+<head>
+  <meta charset="UTF-8" />
+  <title>MyShop - Cart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="cart">
+  <!-- Top Notification Bar -->
+  <div class="top-strip">
+    <span>Review your cart and proceed to checkout.</span>
+  </div>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <a href="index.html" class="brand">
+        <span class="brand-logo">🛒</span>
+        <span class="brand-text">MyShop</span>
+      </a>
+    </div>
+    <nav class="nav-center">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="index.html#products" class="nav-link">Products</a>
+      <a href="cart.html" class="nav-link active">Cart</a>
+      <a href="checkout.html" class="nav-link">Checkout</a>
+    </nav>
+    <div class="nav-right">
+      <div class="nav-user" id="navUserSection">
+        <!-- Filled by JS -->
+      </div>
+      <a href="admin.html" class="nav-link nav-link-admin">Admin</a>
+    </div>
+  </header>
+
+  <!-- Cart Content -->
+  <main class="page-shell">
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Your Cart</h2>
+          <p class="section-subtitle">Manage items before placing your order.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Cart Items Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Items</h3>
+          </div>
+          <div class="card-body">
+            <div id="cartEmptyState" class="empty-state hidden">
+              <p>Your cart is empty.</p>
+              <a href="index.html#products" class="btn btn-primary">Browse Products</a>
+            </div>
+            <table class="table" id="cartTable">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="cartItemsBody">
+                <!-- Filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="card card-summary">
+          <div class="card-header">
+            <h3>Summary</h3>
+          </div>
+          <div class="card-body">
+            <div class="summary-row">
+              <span>Items Total</span>
+              <span id="cartItemsTotal">₹0</span>
+            </div>
+            <div class="summary-row">
+              <span>Shipping</span>
+              <span>₹0</span>
+            </div>
+            <hr />
+            <div class="summary-row summary-row-total">
+              <span>Grand Total</span>
+              <span id="cartGrandTotal">₹0</span>
+            </div>
+            <button id="goToCheckoutBtn" class="btn btn-primary summary-btn">
+              Proceed to Checkout
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Cart Button -->
+  <a href="cart.html" class="floating-cart-btn">
+    <span class="icon">🛒</span>
+    <span id="floatingCartCount">0</span>
+  </a>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <h4>MyShop</h4>
+        <p>Simple demo store using Express, SQLite, and a clean frontend.</p>
+      </div>
+      <div>
+        <h4>Links</h4>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="cart.html">Cart</a></li>
+          <li><a href="checkout.html">Checkout</a></li>
+          <li><a href="admin.html">Admin Panel</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul>
+          <li><a href="login.html">Login</a></li>
+          <li><a href="register.html">Register</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-bottom">
+      &copy; <span id="footerYear"></span> MyShop. Built for learning.
+    </p>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
