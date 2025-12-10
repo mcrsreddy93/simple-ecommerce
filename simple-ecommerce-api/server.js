@@ -2404,10 +2404,10 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
             payment_method || "dummy"
           ],
           function (err3) {
-            if (err3){
+            if (err3) {
               return res.status(500).json({ message: "Error creating order" });
             }
-              
+
 
             const orderId = this.lastID;
 
