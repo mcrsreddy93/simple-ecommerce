@@ -158,7 +158,7 @@ async function loadProductsPage() {
           <div class="product-desc">${p.description}</div>
           <div class="product-meta">
             <span class="product-price">₹${p.price}</span>
-            <span class="product-badge">${p.stock > 0 ? "In Stock" : "Out"}</span>
+            <span class="product-badge">${p.stock > 0 ? "In Stock" : "Out of Stock"}</span>
           </div>
           <div class="product-actions">
             <button class="btn btn-primary btn-sm addToCartBtn">Add to Cart</button>
