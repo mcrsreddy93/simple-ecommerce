@@ -2499,6 +2499,58 @@ app.post("/api/user/address", authenticateToken, (req, res) => {
   });
 });
 
+app.get("/api/user/orders", authenticateToken, (req, res) => {
+  const userId = req.user.id;
+
+  db.all(
+    `
+      SELECT 
+        o.id,
+        o.total_amount,
+        o.discount,
+        o.final_amount,
+        o.payment_method,
+        o.status,
+        o.created_at
+      FROM orders o
+      WHERE o.user_id = ?
+      ORDER BY o.created_at DESC
+    `,
+    [userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "Error fetching orders" });
+      res.json(rows);
+    }
+  );
+});
+
+app.get("/api/user/orders/:id/items", authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const orderId = req.params.id;
+
+  db.all(
+    `
+      SELECT 
+        oi.product_id,
+        oi.quantity,
+        oi.price,
+        p.name,
+        p.image_url
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      JOIN orders o ON o.id = oi.order_id
+      WHERE oi.order_id = ? AND o.user_id = ?
+    `,
+    [orderId, userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "Error loading items" });
+
+      res.json(rows);
+    }
+  );
+});
+
+
 app.post("/api/coupons/validate", authenticateToken, (req, res) => {
   const { code, cart_total } = req.body;
 

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-page="orders">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>MyShop - My Orders</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+
+<body data-page="orders">
+
+    <!-- Top Notification Bar -->
+    <div class="top-strip">
+        <span>Your order history - safely stored for your convenience.</span>
+    </div>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand">
+                <span class="brand-logo">🛒</span>
+                <span class="brand-text">MyShop</span>
+            </a>
+        </div>
+
+        <nav class="nav-center">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="cart.html" class="nav-link">Cart</a>
+        </nav>
+
+        <div class="nav-right" id="navUserSection"></div>
+    </header>
+
+
+    <!-- Page Content -->
+    <main class="page-shell">
+        <section class="section">
+            <div class="section-header">
+                <h2>My Orders</h2>
+                <p class="section-subtitle">View your past orders, details and purchased items.</p>
+            </div>
+
+            <!-- ORDER LIST -->
+            <div id="ordersList" class="orders-list beautiful-orders"></div>
+        </section>
+    </main>
+
+
+
+    <!-- ORDER DETAILS MODAL -->
+    <div id="orderDetailsModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <h3 class="modal-title">Order Details</h3>
+
+            <div id="orderItemsContainer" class="order-items-container">
+                <!-- JS will populate -->
+            </div>
+
+            <div class="modal-actions mt-2">
+                <button id="closeOrderDetails" class="btn btn-light-outline">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <div>
+                <h4>MyShop</h4>
+                <p>Your trusted mini shopping demo project.</p>
+            </div>
+            <div>
+                <h4>Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="cart.html">Cart</a></li>
+                    <li><a href="checkout.html">Checkout</a></li>
+                    <li><a href="admin.html">Admin Panel</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Account</h4>
+                <ul>
+                    <li><a href="login.html">Login</a></li>
+                    <li><a href="register.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+        <p class="footer-bottom">
+            &copy; <span id="footerYear"></span> MyShop
+        </p>
+    </footer>
+
+
+    <script src="assets/app.js"></script>
+</body>
+
+</html>

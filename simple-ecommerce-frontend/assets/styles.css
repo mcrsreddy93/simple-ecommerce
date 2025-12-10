@@ -797,3 +797,74 @@ body {
     font-weight: bold;
     color: var(--primary);
 }
+
+/* ============================
+   BEAUTIFUL ORDER LIST
+============================ */
+.beautiful-orders .order-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    box-shadow: rgba(0, 0, 0, 0.06) 0px 1px 4px;
+    transition: 0.2s ease;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 4px 10px;
+}
+
+.order-card h4 {
+    margin-bottom: 4px;
+}
+
+.order-card p {
+    margin: 2px 0;
+    font-size: 14px;
+}
+
+/* ALIGN BUTTON */
+.order-card button {
+    height: 36px;
+}
+
+/* ============================
+   ORDER DETAILS MODAL
+============================ */
+.modal-large {
+    max-width: 700px;
+}
+
+.order-items-container {
+    margin-top: 1rem;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    gap: 16px;
+}
+
+.order-item img {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.order-item p {
+    margin: 2px 0;
+}
+
+.modal-title {
+    margin-bottom: 10px;
+}

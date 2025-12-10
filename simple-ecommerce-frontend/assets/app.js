@@ -1128,8 +1128,94 @@ document.addEventListener("DOMContentLoaded", () => {
     checkoutPageInit();
     adminPanelInit();   // <-- ADD THIS
     updateCartCount();
+    loadUserOrders();
 
     const footerYear = document.getElementById("footerYear");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
 });
 
+
+function loadUserOrders() {
+    const page = document.body.getAttribute("data-page");
+    if (page !== "orders") return;
+
+    const ordersBox = document.getElementById("ordersList");
+
+    apiRequest("/api/user/orders", "GET", null, true)
+        .then(orders => {
+            if (!orders.length) {
+                ordersBox.innerHTML = "<p>You have no orders yet.</p>";
+                return;
+            }
+
+            let html = "";
+            orders.forEach(o => {
+                html += `
+                <div class="order-card">
+                    <div>
+                        <h4>Order #${o.id}</h4>
+                        <p>Date: ${o.created_at}</p>
+                        <p>Status: <strong>${o.status}</strong></p>
+                    </div>
+                    <div>
+                        <p>Total: ₹${o.total_amount}</p>
+                        <p>Discount: ₹${o.discount}</p>
+                        <p><strong>Paid:</strong> ₹${o.final_amount}</p>
+                    </div>
+                    <button class="btn btn-light-outline" data-view-order="${o.id}">
+                        View Items
+                    </button>
+                </div>
+                `;
+            });
+
+            ordersBox.innerHTML = html;
+
+            // View details
+            document.querySelectorAll("[data-view-order]").forEach(btn => {
+                btn.onclick = () => loadOrderItems(btn.dataset.viewOrder);
+            });
+
+        })
+        .catch(() => {
+            ordersBox.innerHTML = "<p>Error loading orders.</p>";
+        });
+}
+
+
+function loadOrderItems(orderId) {
+    const modal = document.getElementById("orderDetailsModal");
+    const box = document.getElementById("orderItemsContainer");
+
+    modal.classList.remove("hidden");
+    box.innerHTML = "<p>Loading...</p>";
+
+    apiRequest(`/api/user/orders/${orderId}/items`, "GET", null, true)
+        .then(items => {
+
+            if (!items.length) {
+                box.innerHTML = "<p>No items found for this order.</p>";
+                return;
+            }
+
+            let html = "";
+
+            items.forEach(it => {
+                html += `
+                <div class="order-item">
+                    <img src="${it.image_url}" alt="">
+                    <div>
+                        <p><strong>${it.name}</strong></p>
+                        <p>Qty: ${it.quantity}</p>
+                        <p>Price: ₹${it.price}</p>
+                    </div>
+                </div>
+                `;
+            });
+
+            box.innerHTML = html;
+        });
+
+    document.getElementById("closeOrderDetails").onclick = () =>
+        modal.classList.add("hidden");
+}
