@@ -37,24 +37,23 @@
         </div>
     </header>
 
-    <!-- Checkout Page -->
+    <!-- Checkout Page Main Content -->
     <main class="page-shell">
         <section class="section">
 
             <div class="section-header">
                 <div>
                     <h2>Checkout</h2>
-                    <p class="section-subtitle">Apply coupon, review summary, enter address & pay.</p>
+                    <p class="section-subtitle">Apply coupon, review summary, add address & pay securely.</p>
                 </div>
             </div>
 
-            <!-- Grid Layout -->
             <div class="grid-2">
 
                 <!-- LEFT SIDE -->
                 <div>
 
-                    <!-- Coupon Section -->
+                    <!-- COUPON BLOCK -->
                     <div class="card">
                         <div class="card-header">
                             <h3>Apply Coupon</h3>
@@ -70,7 +69,7 @@
 
                     <hr />
 
-                    <!-- Order Summary -->
+                    <!-- ORDER SUMMARY -->
                     <div class="card">
                         <div class="card-header">
                             <h3>Order Summary</h3>
@@ -93,11 +92,11 @@
                                     </tr>
                                 </thead>
                                 <tbody id="checkoutItemsBody">
-                                    <!-- Filled by JS -->
+                                    <!-- Filled dynamically -->
                                 </tbody>
                             </table>
 
-                            <!-- SUMMARY BREAKDOWN -->
+                            <!-- SUMMARY DETAILS -->
                             <div class="summary-row mt-1">
                                 <span>Subtotal</span>
                                 <span id="checkoutSubtotal">₹0</span>
@@ -123,7 +122,7 @@
                 <!-- RIGHT SIDE -->
                 <div>
 
-                    <!-- Delivery Address -->
+                    <!-- DELIVERY ADDRESS -->
                     <h3 class="mb-1">Delivery Address</h3>
 
                     <form id="addressForm" class="address-form">
@@ -148,26 +147,60 @@
 
                     <hr />
 
-                    <!-- Payment Section -->
+                    <!-- PAYMENT SECTION -->
                     <div class="card mt-2">
                         <div class="card-header">
                             <h3>Payment</h3>
                         </div>
 
                         <div class="card-body">
+
+                            <!-- CREDIT CARD PAYMENT BOX -->
+                            <div id="cardPaymentBox" class="hidden">
+
+                                <div class="form-group">
+                                    <label>Card Number</label>
+                                    <input id="cardNumber" class="input" placeholder="4111 1111 1111 1111" />
+                                </div>
+
+                                <div class="form-flex">
+                                    <div>
+                                        <label>Expiry Month</label>
+                                        <input id="cardExpiryMonth" class="input" placeholder="MM" />
+                                    </div>
+
+                                    <div>
+                                        <label>Expiry Year</label>
+                                        <input id="cardExpiryYear" class="input" placeholder="YYYY" />
+                                    </div>
+                                    
+                                </div>
+
+                                <div class="form-group">
+                                    <label>CVV</label>
+                                    <input id="cardCVV" class="input" placeholder="123" />
+                                </div>
+
+                                <p class="small-note">Use dummy credit cards stored in the database.</p>
+                                <hr />
+                            </div>
+                            <!-- END CARD PAYMENT UI -->
+
+
+                            <!-- CHECKOUT FORM -->
                             <form id="checkoutForm" class="form">
 
                                 <div class="form-group">
                                     <label for="paymentMethod">Payment Method</label>
                                     <select id="paymentMethod" class="input input-select" required>
                                         <option value="card">Card (Dummy)</option>
-                                        <option value="cod">Cash on Delivery (Dummy)</option>
+                                        <option value="cod" selected>Cash on Delivery (Dummy)</option>
                                         <option value="upi">UPI (Dummy)</option>
                                     </select>
                                 </div>
 
                                 <p class="small-note">
-                                    No real payment happens. Backend creates an order and clears your cart.
+                                    Dummy checkout — no real transaction. Backend creates an order and clears your cart.
                                 </p>
 
                                 <button type="submit" class="btn btn-primary summary-btn">
@@ -182,6 +215,7 @@
                 </div>
 
             </div>
+
         </section>
     </main>
 
@@ -228,8 +262,7 @@
         </p>
     </footer>
 
-    <!-- Scripts -->
     <script src="assets/app.js"></script>
-</body>
 
+</body>
 </html>

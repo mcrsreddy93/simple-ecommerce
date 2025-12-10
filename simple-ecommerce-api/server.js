@@ -131,7 +131,20 @@ db.serialize(() => {
     expires_at DATETIME,
     is_active INTEGER DEFAULT 1
 );
+  `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS credit_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_number TEXT UNIQUE,
+    card_holder TEXT,
+    expiry_month INTEGER,
+    expiry_year INTEGER,
+    cvv TEXT,
+    balance REAL DEFAULT 0,
+    status TEXT CHECK(status IN ('ACTIVE','BLOCKED','EXPIRED')) DEFAULT 'ACTIVE',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
   `);
 
   seedInitialData();
@@ -158,6 +171,26 @@ function seedInitialData() {
       console.log("Seeded admin and test user:");
       console.log("Admin => email: admin@example.com, password: admin123");
       console.log("User  => email: user@example.com,  password: user123");
+    }
+  });
+
+  // insert credit cards
+  db.get("SELECT COUNT(*) as count FROM credit_cards", (err, row) => {
+    if (err) return console.error("Credit card count error:", err);
+    if (row.count === 0) {
+      const cardStmt = db.prepare(
+        "INSERT INTO credit_cards (card_number, card_holder, expiry_month, expiry_year, cvv, balance, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      );
+      const cards = [
+        ["4111111111111111", "John Doe", 12, 2025, "123", 50000, "ACTIVE"],
+        ["5500000000000004", "Jane Smith", 11, 2024, "456", 30000, "ACTIVE"],
+        ["340000000000009", "Alice Johnson", 10, 2026, "789", 70000, "ACTIVE"],
+        ["30000000000004", "Bob Brown", 9, 2023, "321", 20000, "BLOCKED"],
+        ["6011000000000004", "Charlie Davis", 8, 2022, "654", 40000, "EXPIRED"],
+      ];
+      cards.forEach(c => cardStmt.run(c));
+      cardStmt.finalize();
+      console.log("Seeded sample credit cards.");
     }
   });
 
@@ -2360,8 +2393,8 @@ app.delete("/api/cart/items/:id", authenticateToken, (req, res) => {
 });
 
 // --- CHECKOUT + DUMMY PAYMENT ---
-app.post("/api/checkout", authenticateToken, (req, res) => {
-  const { payment_method, coupon_code, discount } = req.body;
+app.post("/api/checkout", authenticateToken, async (req, res) => {
+  const { payment_method, coupon_code, discount, card } = req.body;
 
   getOrCreateOpenCart(req.user.id, (err, cart) => {
     if (err) return res.status(500).json({ message: "Error loading cart" });
@@ -2376,86 +2409,98 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
       [cart.id],
       (err2, items) => {
         if (err2) return res.status(500).json({ message: "Error loading cart items" });
-        if (!items || items.length === 0)
-          return res.status(400).json({ message: "Cart is empty" });
+        if (!items.length) return res.status(400).json({ message: "Cart is empty" });
 
-        // Calculate subtotal
-        const subtotal = items.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
+        const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const appliedDiscount = discount || 0;
+        const finalAmount = subtotal - appliedDiscount;
 
-        // Apply discount from frontend (validated before)
-        const appliedDiscount = discount ? Number(discount) : 0;
-        const finalTotal = Math.max(subtotal - appliedDiscount, 0);
+        /* -------- CARD PAYMENT -------- */
+        if (payment_method == "card") {
 
-        // Create order
-        db.run(
-          `
-          INSERT INTO orders 
-          (user_id, total_amount, discount, final_amount, payment_method, status, payment_status)
-          VALUES (?, ?, ?, ?, ?, 'PLACED', 'PAID')
-        `,
-          [
-            req.user.id,
-            subtotal,          // original total
-            appliedDiscount,   // discount applied
-            finalTotal,        // final payable
-            payment_method || "dummy"
-          ],
-          function (err3) {
-            if (err3) {
-              return res.status(500).json({ message: "Error creating order" });
+          if (!card || !card.number || !card.exp_month || !card.exp_year || !card.cvv) {
+            return res.status(400).json({ message: "Incomplete card details" });
+          }
+
+          db.get(
+            `SELECT * FROM credit_cards WHERE card_number=? AND cvv=?`,
+            [card.number, card.cvv],
+            (err, dbCard) => {
+              console.log(err, dbCard);
+              if (err) return res.status(500).json({ message: "Card lookup error" });
+              if (!dbCard) return res.status(400).json({ message: "Invalid card" });
+
+              if (dbCard.status === "BLOCKED")
+                return res.status(400).json({ message: "Card is blocked" });
+
+              if (dbCard.status === "EXPIRED")
+                return res.status(400).json({ message: "Card expired" });
+
+              const now = new Date();
+              const exp = new Date(dbCard.expiry_year, dbCard.expiry_month - 1);
+              if (exp < now)
+                return res.status(400).json({ message: "Card has expired" });
+
+              if (dbCard.balance < finalAmount)
+                return res.status(400).json({ message: "Insufficient balance" });
+
+              // Deduct balance
+              db.run(
+                `UPDATE credit_cards SET balance = balance - ? WHERE id = ?`,
+                [finalAmount, dbCard.id]
+              );
+
+              createOrder();
             }
+          );
 
+        } else {
+          createOrder();
+        }
 
-            const orderId = this.lastID;
+        /* -------- CREATE ORDER FUNCTION -------- */
+        function createOrder() {
+          db.run(
+            `
+            INSERT INTO orders 
+            (user_id, total_amount, discount, final_amount, payment_status, payment_method, status)
+            VALUES (?, ?, ?, ?, 'PAID', ?, 'PLACED')
+          `,
+            [req.user.id, subtotal, appliedDiscount, finalAmount, payment_method],
+            function (err3) {
+              if (err3) return res.status(500).json({ message: "Error creating order" });
 
-            // Insert order items
-            const stmt = db.prepare(
-              "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)"
-            );
+              const orderId = this.lastID;
 
-            items.forEach((item) =>
-              stmt.run(orderId, item.product_id, item.quantity, item.price)
-            );
+              const stmt = db.prepare(
+                `INSERT INTO order_items (order_id, product_id, quantity, price)
+                 VALUES (?, ?, ?, ?)`
+              );
 
-            stmt.finalize((err4) => {
-              if (err4)
-                return res.status(500).json({ message: "Error saving order items" });
+              items.forEach((item) => {
+                stmt.run(orderId, item.product_id, item.quantity, item.price);
+              });
 
-              // Close cart
-              db.run("UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?", [cart.id], (err5) => {
-                if (err5)
-                  return res.status(500).json({ message: "Error updating cart" });
+              stmt.finalize(() => {
+                db.run(`UPDATE carts SET status='CHECKED_OUT' WHERE id=?`, [cart.id]);
+                db.run(`DELETE FROM cart_items WHERE cart_id=?`, [cart.id]);
 
-                // Clear cart items
-                db.run("DELETE FROM cart_items WHERE cart_id = ?", [cart.id], (err6) => {
-                  if (err6)
-                    return res
-                      .status(500)
-                      .json({ message: "Error clearing cart" });
-
-                  // SUCCESS
-                  res.json({
-                    message: "Order placed successfully",
-                    order_id: orderId,
-                    subtotal,
-                    discount: appliedDiscount,
-                    total: finalTotal,
-                    coupon_code: coupon_code || null,
-                    payment_method: payment_method || "dummy",
-                  });
+                res.json({
+                  message: "Order placed successfully",
+                  order_id: orderId,
+                  subtotal,
+                  discount: appliedDiscount,
+                  final_amount: finalAmount,
+                  payment_method
                 });
               });
-            });
-          }
-        );
+            }
+          );
+        }
       }
     );
   });
 });
-
 
 app.get("/api/user/address", authenticateToken, (req, res) => {
   db.get(`SELECT * FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {

@@ -394,7 +394,7 @@ async function checkoutPageInit() {
     const table = document.getElementById("checkoutTable");
     const emptyState = document.getElementById("checkoutEmptyState");
 
-    // Summary Elements
+    // Summary elements
     const subtotalEl = document.getElementById("checkoutSubtotal");
     const discountRow = document.getElementById("discountRow");
     const discountCodeLabel = document.getElementById("discountCodeLabel");
@@ -406,7 +406,14 @@ async function checkoutPageInit() {
     const paymentMethodSelect = document.getElementById("paymentMethod");
     const resultBox = document.getElementById("checkoutResult");
 
-    // Address Elements
+    // CARD elements
+    const cardBox = document.getElementById("cardPaymentBox");
+    const cardNumber = document.getElementById("cardNumber");
+    const cardExpMonth = document.getElementById("cardExpiryMonth");
+    const cardExpYear = document.getElementById("cardExpiryYear");
+    const cardCVV = document.getElementById("cardCVV");
+
+    // Address
     const addressForm = document.getElementById("addressForm");
     const addrFullName = document.getElementById("addrFullName");
     const addrPhone = document.getElementById("addrPhone");
@@ -417,7 +424,7 @@ async function checkoutPageInit() {
     const addrPostal = document.getElementById("addrPostal");
     const addrCountry = document.getElementById("addrCountry");
 
-    // Coupon Elements
+    // Coupon
     const couponInput = document.getElementById("couponInput");
     const applyCouponBtn = document.getElementById("applyCouponBtn");
     const couponResult = document.getElementById("couponResult");
@@ -426,7 +433,16 @@ async function checkoutPageInit() {
     let discountAmount = 0;
     let currentTotal = 0;
 
-    /* LOAD USER SAVED ADDRESS */
+    /* SHOW / HIDE CARD BOX */
+    paymentMethodSelect.onchange = () => {
+        if (paymentMethodSelect.value === "card") {
+            cardBox.classList.remove("hidden");
+        } else {
+            cardBox.classList.add("hidden");
+        }
+    };
+
+    /* LOAD SAVED ADDRESS */
     async function loadSavedAddress() {
         try {
             const saved = await apiRequest("/api/user/address", "GET", null, true);
@@ -440,13 +456,12 @@ async function checkoutPageInit() {
                 addrPostal.value = saved.postal_code;
                 addrCountry.value = saved.country;
             }
-        } catch { }
+        } catch {}
     }
 
     /* SAVE ADDRESS */
     addressForm.onsubmit = async (e) => {
         e.preventDefault();
-
         const data = {
             full_name: addrFullName.value,
             phone: addrPhone.value,
@@ -457,7 +472,6 @@ async function checkoutPageInit() {
             postal_code: addrPostal.value,
             country: addrCountry.value
         };
-
         try {
             await apiRequest("/api/user/address", "POST", data, true);
             showToast("Address saved!");
@@ -476,10 +490,9 @@ async function checkoutPageInit() {
             discountAmount = 0;
             appliedCoupon = null;
 
-            // Reset coupon UI
             couponResult.textContent = "";
             discountRow.style.display = "none";
-            discountAmountLabel.textContent = "-₹0";
+            totalEl.textContent = "₹0";
 
             if (!cart.items.length) {
                 table.classList.add("hidden");
@@ -492,28 +505,25 @@ async function checkoutPageInit() {
             emptyState.classList.add("hidden");
             form.classList.remove("hidden");
 
-            // Fill cart rows
-            cart.items.forEach((item) => {
+            cart.items.forEach(item => {
                 const subtotal = item.price * item.quantity;
                 currentTotal += subtotal;
 
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${item.name}</td>
-                    <td>${item.quantity}</td>
-                    <td>₹${item.price}</td>
-                    <td>₹${subtotal}</td>
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.quantity}</td>
+                        <td>₹${item.price}</td>
+                        <td>₹${subtotal}</td>
+                    </tr>
                 `;
-                tbody.appendChild(row);
             });
 
-            // Update summary
             subtotalEl.textContent = `₹${currentTotal}`;
             totalEl.textContent = `₹${currentTotal}`;
-
         } catch {
             showToast("Login required");
-            setTimeout(() => (location.href = "login.html"), 800);
+            setTimeout(() => location.href = "login.html", 800);
         }
     }
 
@@ -531,13 +541,12 @@ async function checkoutPageInit() {
             appliedCoupon = res.coupon;
             discountAmount = res.discount;
 
-            // update UI
             discountRow.style.display = "flex";
             discountCodeLabel.textContent = appliedCoupon.code;
             discountAmountLabel.textContent = `-₹${discountAmount}`;
             totalEl.textContent = `₹${res.final_total}`;
-            couponResult.textContent = `Coupon Applied! You saved ₹${discountAmount}`;
 
+            couponResult.textContent = `Coupon Applied! You saved ₹${discountAmount}`;
             showToast("Coupon applied");
         } catch (err) {
             appliedCoupon = null;
@@ -555,14 +564,16 @@ async function checkoutPageInit() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // Address validation
-        if (!addrFullName.value || !addrPhone.value || !addrLine1.value ||
-            !addrCity.value || !addrState.value || !addrPostal.value || !addrCountry.value) {
-            showToast("Please enter complete delivery address");
+        // Validate Address
+        if (
+            !addrFullName.value || !addrPhone.value || !addrLine1.value ||
+            !addrCity.value || !addrState.value || !addrPostal.value || !addrCountry.value
+        ) {
+            showToast("Please enter complete address");
             return;
         }
 
-        // Save address before placing order
+        // Save address
         await apiRequest("/api/user/address", "POST", {
             full_name: addrFullName.value,
             phone: addrPhone.value,
@@ -576,12 +587,25 @@ async function checkoutPageInit() {
 
         const payment_method = paymentMethodSelect.value;
 
+        // Build request body
+        const reqBody = {
+            payment_method,
+            coupon_code: appliedCoupon ? appliedCoupon.code : null,
+            discount: discountAmount
+        };
+
+        // Card Payment
+        if (payment_method === "card") {
+            reqBody.card = {
+                number: cardNumber.value,
+                exp_month: cardExpMonth.value,
+                exp_year: cardExpYear.value,
+                cvv: cardCVV.value
+            };
+        }
+
         try {
-            const res = await apiRequest("/api/checkout", "POST", {
-                payment_method,
-                coupon_code: appliedCoupon ? appliedCoupon.code : null,
-                discount: discountAmount
-            }, true);
+            const res = await apiRequest("/api/checkout", "POST", reqBody, true);
 
             showToast("Order placed!");
 
@@ -589,22 +613,20 @@ async function checkoutPageInit() {
             resultBox.innerHTML = `
                 <strong>Success!</strong><br>
                 Order ID: ${res.order_id}<br>
-                Paid: ₹${res.total}<br>
-                Payment Method: ${res.payment_method}<br>
-                ${appliedCoupon ? `Coupon Used: ${appliedCoupon.code}` : ""}
+                Amount Paid: ₹${res.final_amount}<br>
+                Payment: ${res.payment_method}<br>
+                ${appliedCoupon ? `Coupon Applied: ${appliedCoupon.code}` : ""}
             `;
 
             loadCheckoutCart();
             updateCartCount();
 
             setTimeout(() => location.href = "index.html", 2000);
-
         } catch (err) {
             showToast(err.message || "Checkout failed");
         }
     };
 
-    /* INIT */
     loadCheckoutCart();
     loadSavedAddress();
 }
