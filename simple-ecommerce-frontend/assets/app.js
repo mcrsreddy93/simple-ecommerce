@@ -456,7 +456,7 @@ async function checkoutPageInit() {
                 addrPostal.value = saved.postal_code;
                 addrCountry.value = saved.country;
             }
-        } catch {}
+        } catch { }
     }
 
     /* SAVE ADDRESS */
@@ -935,13 +935,13 @@ function adminPanelInit() {
    ADMIN — ORDERS LIST (UPDATED FOR COUPONS)
 ============================================================ */
     async function loadAdminOrders() {
-    const box = document.getElementById("adminOrdersList");
-    box.innerHTML = "<p>Loading...</p>";
+        const box = document.getElementById("adminOrdersList");
+        box.innerHTML = "<p>Loading...</p>";
 
-    try {
-        const orders = await apiRequest("/api/admin/orders", "GET", null, true);
+        try {
+            const orders = await apiRequest("/api/admin/orders", "GET", null, true);
 
-        let html = `
+            let html = `
       <table class="table">
         <thead>
           <tr>
@@ -959,16 +959,16 @@ function adminPanelInit() {
         <tbody>
     `;
 
-        const ALL_STATUS = [
-            "PLACED",
-            "PACKED",
-            "SHIPPED",
-            "OUT_FOR_DELIVERY",
-            "DELIVERED"
-        ];
+            const ALL_STATUS = [
+                "PLACED",
+                "PACKED",
+                "SHIPPED",
+                "OUT_FOR_DELIVERY",
+                "DELIVERED"
+            ];
 
-        orders.forEach(o => {
-            html += `
+            orders.forEach(o => {
+                html += `
         <tr>
           <td>${o.id}</td>
           <td>${o.user_email}</td>
@@ -985,8 +985,8 @@ function adminPanelInit() {
             <select class="input input-select admin-status-select" data-order-id="${o.id}">
               <option value="">-- Change --</option>
               ${ALL_STATUS
-                .map(s => `<option value="${s}" ${s === o.status ? "selected" : ""}>${s}</option>`)
-                .join("")}
+                        .map(s => `<option value="${s}" ${s === o.status ? "selected" : ""}>${s}</option>`)
+                        .join("")}
             </select>
 
             <button class="btn btn-primary btn-sm" data-update-status="${o.id}">
@@ -997,42 +997,42 @@ function adminPanelInit() {
           <td>${o.created_at}</td>
         </tr>
       `;
-        });
+            });
 
-        html += `</tbody></table>`;
-        box.innerHTML = html;
+            html += `</tbody></table>`;
+            box.innerHTML = html;
 
-        // Handle Status Update Button
-        box.querySelectorAll("[data-update-status]").forEach(btn => {
-            btn.onclick = async () => {
-                const orderId = btn.dataset.updateStatus;
-                const select = box.querySelector(`select[data-order-id="${orderId}"]`);
-                const newStatus = select.value;
+            // Handle Status Update Button
+            box.querySelectorAll("[data-update-status]").forEach(btn => {
+                btn.onclick = async () => {
+                    const orderId = btn.dataset.updateStatus;
+                    const select = box.querySelector(`select[data-order-id="${orderId}"]`);
+                    const newStatus = select.value;
 
-                if (!newStatus) {
-                    showToast("Select a status first");
-                    return;
-                }
+                    if (!newStatus) {
+                        showToast("Select a status first");
+                        return;
+                    }
 
-                try {
-                    await apiRequest(`/api/admin/orders/${orderId}/status`, "PUT", {
-                        status: newStatus
-                    }, true);
+                    try {
+                        await apiRequest(`/api/admin/orders/${orderId}/status`, "PUT", {
+                            status: newStatus
+                        }, true);
 
-                    showToast("Order status updated");
-                    loadAdminOrders(); // Refresh table after update
-                } catch (err) {
-                    console.error(err);
-                    showToast("Error updating status");
-                }
-            };
-        });
+                        showToast("Order status updated");
+                        loadAdminOrders(); // Refresh table after update
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Error updating status");
+                    }
+                };
+            });
 
-    } catch (err) {
-        console.error(err);
-        box.innerHTML = "<p>Error loading orders</p>";
+        } catch (err) {
+            console.error(err);
+            box.innerHTML = "<p>Error loading orders</p>";
+        }
     }
-}
 
 
     /* ============================================================
@@ -1205,6 +1205,7 @@ document.addEventListener("DOMContentLoaded", () => {
     adminPanelInit();   // <-- ADD THIS
     updateCartCount();
     loadUserOrders();
+    loadAdminCards();
 
     const footerYear = document.getElementById("footerYear");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
@@ -1295,3 +1296,122 @@ function loadOrderItems(orderId) {
     document.getElementById("closeOrderDetails").onclick = () =>
         modal.classList.add("hidden");
 }
+
+function openCardModal(edit = false, data = null) {
+    const modal = document.getElementById("cardModal");
+    modal.classList.remove("hidden");
+
+    if (edit) {
+        document.getElementById("cardModalTitle").textContent = "Edit Credit Card";
+
+        document.getElementById("cardId").value = data.id;
+        document.getElementById("cardNumberInput").value = data.card_number;
+        document.getElementById("cardHolderInput").value = data.card_holder;
+        document.getElementById("cardExpiryMonthInput").value = data.expiry_month;
+        document.getElementById("cardExpiryYearInput").value = data.expiry_year;
+        document.getElementById("cardCVVInput").value = data.cvv;
+        document.getElementById("cardLimitInput").value = data.balance;
+        document.getElementById("cardStatusInput").value = data.status;
+
+    } else {
+        document.getElementById("cardModalTitle").textContent = "Add Credit Card";
+        document.getElementById("cardForm").reset();
+        document.getElementById("cardId").value = "";
+    }
+}
+
+document.getElementById("closeCardModal").onclick = () =>
+    document.getElementById("cardModal").classList.add("hidden");
+
+document.getElementById("adminAddCardBtn").onclick = () =>
+    openCardModal(false);
+
+async function loadAdminCards() {
+    const box = document.getElementById("adminCardsList");
+    box.innerHTML = "<p>Loading...</p>";
+
+    try {
+        const cards = await apiRequest("/api/admin/cards", "GET", null, true);
+        let html = `
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Card Number</th>
+                    <th>Holder</th>
+                    <th>Expiry</th>
+                    <th>Limit</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        cards.forEach(c => {
+            html += `
+            <tr>
+                <td>${c.card_number}</td>
+                <td>${c.card_holder}</td>
+                <td>${c.expiry_month}/${c.expiry_year}</td>
+                <td>₹${c.balance}</td>
+                <td>${c.status}</td>
+                <td>
+                    <button class="btn btn-light-outline btn-sm" data-edit-card="${c.id}">Edit</button>
+                    <button class="btn btn-light-outline btn-sm" data-delete-card="${c.id}">Delete</button>
+                </td>
+            </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        box.innerHTML = html;
+
+        // Edit button
+        box.querySelectorAll("[data-edit-card]").forEach(btn => {
+            btn.onclick = async () => {
+                const card = await apiRequest(`/api/admin/cards/${btn.dataset.editCard}`, "GET", null, true);
+                openCardModal(true, card);
+            };
+        });
+
+        // Delete
+        box.querySelectorAll("[data-delete-card]").forEach(btn => {
+            btn.onclick = async () => {
+                if (confirm("Delete this card?")) {
+                    await apiRequest(`/api/admin/cards/${btn.dataset.deleteCard}`, "DELETE", null, true);
+                    showToast("Card deleted");
+                    loadAdminCards();
+                }
+            };
+        });
+
+    } catch {
+        box.innerHTML = "<p>Error loading credit cards</p>";
+    }
+}
+
+document.getElementById("cardForm").onsubmit = async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById("cardId").value;
+
+    const data = {
+        card_number: document.getElementById("cardNumberInput").value,
+        card_holder: document.getElementById("cardHolderInput").value,
+        expiry_month: document.getElementById("cardExpiryMonthInput").value,
+        expiry_year: document.getElementById("cardExpiryYearInput").value,
+        cvv: document.getElementById("cardCVVInput").value,
+        balance: parseInt(document.getElementById("cardLimitInput").value),
+        status: document.getElementById("cardStatusInput").value
+    };
+
+    if (id) {
+        await apiRequest(`/api/admin/cards/${id}`, "PUT", data, true);
+        showToast("Card updated");
+    } else {
+        await apiRequest(`/api/admin/cards`, "POST", data, true);
+        showToast("Card added");
+    }
+
+    document.getElementById("cardModal").classList.add("hidden");
+    loadAdminCards();
+};

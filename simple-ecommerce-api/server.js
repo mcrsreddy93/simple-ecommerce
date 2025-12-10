@@ -2672,9 +2672,6 @@ app.get("/api/admin/orders", authenticateToken, requireAdmin, (req, res) => {
   );
 });
 
-
-
-
 // Admin: Create product
 app.post("/api/admin/products", authenticateToken, requireAdmin, (req, res) => {
   const { name, description, price, category_id, image_url, stock } = req.body;
@@ -2738,6 +2735,156 @@ app.delete(
     );
   }
 );
+
+app.get("/api/admin/cards", authenticateToken, requireAdmin, (req, res) => {
+  db.all(
+    "SELECT * FROM credit_cards",
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "Error fetching cards" });
+      res.json(rows);
+    }
+  );
+});
+
+app.get("/api/admin/cards/:id", authenticateToken, requireAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.get(
+    `
+    SELECT 
+      id,
+      card_number,
+      card_holder,
+      expiry_month,
+      expiry_year,
+      cvv,
+      balance,
+      status,
+      created_at
+    FROM credit_cards
+    WHERE id = ?
+    `,
+    [id],
+    (err, row) => {
+      if (err) {
+        console.error("Error fetching card", err);
+        return res.status(500).json({ message: "Error fetching card" });
+      }
+      if (!row) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      res.json(row);
+    }
+  );
+});
+
+app.post("/api/admin/cards", authenticateToken, requireAdmin, (req, res) => {
+  const {
+    card_number,
+    card_holder,
+    expiry_month,
+    expiry_year,
+    cvv,
+    balance,
+    status
+  } = req.body;
+
+  if (!card_number || !card_holder || !expiry_month || !expiry_year || !cvv) {
+    return res.status(400).json({ message: "Missing card fields" });
+  }
+
+  db.run(
+    `
+    INSERT INTO credit_cards 
+      (card_number, card_holder, expiry_month, expiry_year, cvv, balance, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      card_number,
+      card_holder,
+      parseInt(expiry_month, 10),
+      parseInt(expiry_year, 10),
+      cvv,
+      balance != null ? parseFloat(balance) : 0,
+      status || "ACTIVE"
+    ],
+    function (err) {
+      if (err) {
+        console.error("Error inserting card", err);
+        return res.status(500).json({ message: "Error adding card" });
+      }
+      res.status(201).json({ id: this.lastID, message: "Card added" });
+    }
+  );
+});
+
+app.put("/api/admin/cards/:id", authenticateToken, requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const {
+    card_number,
+    card_holder,
+    expiry_month,
+    expiry_year,
+    cvv,
+    balance,
+    status
+  } = req.body;
+
+  db.run(
+    `
+    UPDATE credit_cards
+    SET 
+      card_number = ?,
+      card_holder = ?,
+      expiry_month = ?,
+      expiry_year = ?,
+      cvv = ?,
+      balance = ?,
+      status = ?
+    WHERE id = ?
+    `,
+    [
+      card_number,
+      card_holder,
+      parseInt(expiry_month, 10),
+      parseInt(expiry_year, 10),
+      cvv,
+      balance != null ? parseFloat(balance) : 0,
+      status || "ACTIVE",
+      id
+    ],
+    function (err) {
+      if (err) {
+        console.error("Error updating card", err);
+        return res.status(500).json({ message: "Error updating card" });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      res.json({ message: "Card updated" });
+    }
+  );
+});
+
+app.delete("/api/admin/cards/:id", authenticateToken, requireAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.run(
+    `DELETE FROM credit_cards WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) {
+        console.error("Error deleting card", err);
+        return res.status(500).json({ message: "Error deleting card" });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      res.json({ message: "Card deleted" });
+    }
+  );
+});
+
 
 // Admin: Create category
 app.post("/api/admin/categories", authenticateToken, requireAdmin, (req, res) => {
