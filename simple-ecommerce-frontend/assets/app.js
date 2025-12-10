@@ -393,12 +393,20 @@ async function checkoutPageInit() {
     const tbody = document.getElementById("checkoutItemsBody");
     const table = document.getElementById("checkoutTable");
     const emptyState = document.getElementById("checkoutEmptyState");
+
+    // Summary Elements
+    const subtotalEl = document.getElementById("checkoutSubtotal");
+    const discountRow = document.getElementById("discountRow");
+    const discountCodeLabel = document.getElementById("discountCodeLabel");
+    const discountAmountLabel = document.getElementById("discountAmountLabel");
     const totalEl = document.getElementById("checkoutTotal");
+
+    // Payment
     const form = document.getElementById("checkoutForm");
     const paymentMethodSelect = document.getElementById("paymentMethod");
     const resultBox = document.getElementById("checkoutResult");
 
-    // address elements
+    // Address Elements
     const addressForm = document.getElementById("addressForm");
     const addrFullName = document.getElementById("addrFullName");
     const addrPhone = document.getElementById("addrPhone");
@@ -409,17 +417,20 @@ async function checkoutPageInit() {
     const addrPostal = document.getElementById("addrPostal");
     const addrCountry = document.getElementById("addrCountry");
 
+    // Coupon Elements
+    const couponInput = document.getElementById("couponInput");
+    const applyCouponBtn = document.getElementById("applyCouponBtn");
+    const couponResult = document.getElementById("couponResult");
+
+    let appliedCoupon = null;
+    let discountAmount = 0;
     let currentTotal = 0;
 
-    /* ------------------------------------
-       LOAD USER SAVED ADDRESS
-    ------------------------------------ */
+    /* LOAD USER SAVED ADDRESS */
     async function loadSavedAddress() {
         try {
             const saved = await apiRequest("/api/user/address", "GET", null, true);
-
             if (saved) {
-                // auto-fill fields
                 addrFullName.value = saved.full_name;
                 addrPhone.value = saved.phone;
                 addrLine1.value = saved.address_line1;
@@ -429,14 +440,10 @@ async function checkoutPageInit() {
                 addrPostal.value = saved.postal_code;
                 addrCountry.value = saved.country;
             }
-        } catch (err) {
-            console.log("No saved address");
-        }
+        } catch { }
     }
 
-    /* ------------------------------------
-       SAVE ADDRESS - Runs when clicking Save Address
-    ------------------------------------ */
+    /* SAVE ADDRESS */
     addressForm.onsubmit = async (e) => {
         e.preventDefault();
 
@@ -454,20 +461,25 @@ async function checkoutPageInit() {
         try {
             await apiRequest("/api/user/address", "POST", data, true);
             showToast("Address saved!");
-        } catch (err) {
+        } catch {
             showToast("Failed to save address");
         }
     };
 
-    /* ------------------------------------
-       LOAD CART ITEMS
-    ------------------------------------ */
+    /* LOAD CART ITEMS */
     async function loadCheckoutCart() {
         try {
             const cart = await apiRequest("/api/cart", "GET", null, true);
 
             tbody.innerHTML = "";
             currentTotal = 0;
+            discountAmount = 0;
+            appliedCoupon = null;
+
+            // Reset coupon UI
+            couponResult.textContent = "";
+            discountRow.style.display = "none";
+            discountAmountLabel.textContent = "-₹0";
 
             if (!cart.items.length) {
                 table.classList.add("hidden");
@@ -480,6 +492,7 @@ async function checkoutPageInit() {
             emptyState.classList.add("hidden");
             form.classList.remove("hidden");
 
+            // Fill cart rows
             cart.items.forEach((item) => {
                 const subtotal = item.price * item.quantity;
                 currentTotal += subtotal;
@@ -494,34 +507,62 @@ async function checkoutPageInit() {
                 tbody.appendChild(row);
             });
 
+            // Update summary
+            subtotalEl.textContent = `₹${currentTotal}`;
             totalEl.textContent = `₹${currentTotal}`;
-        } catch (err) {
+
+        } catch {
             showToast("Login required");
             setTimeout(() => (location.href = "login.html"), 800);
         }
     }
 
-    /* ------------------------------------
-       PLACE ORDER (Validate Address + Payment)
-    ------------------------------------ */
+    /* APPLY COUPON */
+    applyCouponBtn.onclick = async () => {
+        const code = couponInput.value.trim();
+        if (!code) return showToast("Enter a coupon");
+
+        try {
+            const res = await apiRequest("/api/coupons/validate", "POST", {
+                code,
+                cart_total: currentTotal
+            }, true);
+
+            appliedCoupon = res.coupon;
+            discountAmount = res.discount;
+
+            // update UI
+            discountRow.style.display = "flex";
+            discountCodeLabel.textContent = appliedCoupon.code;
+            discountAmountLabel.textContent = `-₹${discountAmount}`;
+            totalEl.textContent = `₹${res.final_total}`;
+            couponResult.textContent = `Coupon Applied! You saved ₹${discountAmount}`;
+
+            showToast("Coupon applied");
+        } catch (err) {
+            appliedCoupon = null;
+            discountAmount = 0;
+
+            discountRow.style.display = "none";
+            totalEl.textContent = `₹${currentTotal}`;
+
+            couponResult.textContent = "Invalid coupon";
+            showToast(err.message);
+        }
+    };
+
+    /* PLACE ORDER */
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // CHECK ADDRESS FIRST
-        if (
-            !addrFullName.value ||
-            !addrPhone.value ||
-            !addrLine1.value ||
-            !addrCity.value ||
-            !addrState.value ||
-            !addrPostal.value ||
-            !addrCountry.value
-        ) {
+        // Address validation
+        if (!addrFullName.value || !addrPhone.value || !addrLine1.value ||
+            !addrCity.value || !addrState.value || !addrPostal.value || !addrCountry.value) {
             showToast("Please enter complete delivery address");
             return;
         }
 
-        // SAVE ADDRESS before checkout
+        // Save address before placing order
         await apiRequest("/api/user/address", "POST", {
             full_name: addrFullName.value,
             phone: addrPhone.value,
@@ -533,42 +574,40 @@ async function checkoutPageInit() {
             country: addrCountry.value
         }, true);
 
-        // Continue with checkout
         const payment_method = paymentMethodSelect.value;
 
         try {
-            const res = await apiRequest(
-                "/api/checkout",
-                "POST",
-                { payment_method },
-                true
-            );
+            const res = await apiRequest("/api/checkout", "POST", {
+                payment_method,
+                coupon_code: appliedCoupon ? appliedCoupon.code : null,
+                discount: discountAmount
+            }, true);
 
             showToast("Order placed!");
+
             resultBox.classList.remove("hidden");
             resultBox.innerHTML = `
-                <strong>Success!</strong><br />
-                Order ID: ${res.order_id}<br />
-                Paid: ₹${res.total}<br />
-                Payment Method: ${res.payment_method}
+                <strong>Success!</strong><br>
+                Order ID: ${res.order_id}<br>
+                Paid: ₹${res.total}<br>
+                Payment Method: ${res.payment_method}<br>
+                ${appliedCoupon ? `Coupon Used: ${appliedCoupon.code}` : ""}
             `;
 
             loadCheckoutCart();
             updateCartCount();
 
-            setTimeout(() => {
-                location.href = "index.html";
-            }, 2000);
+            setTimeout(() => location.href = "index.html", 2000);
+
         } catch (err) {
             showToast(err.message || "Checkout failed");
         }
     };
 
-    /* INIT LOADS */
+    /* INIT */
     loadCheckoutCart();
     loadSavedAddress();
 }
-
 
 /* ============================================================
    ADMIN PANEL — PRODUCT MANAGEMENT
@@ -739,46 +778,46 @@ function adminPanelInit() {
     document.getElementById("adminAddProductBtn").onclick = () =>
         openProductModal(false);
 
-/* ---------------- CATEGORY MODAL + CRUD ---------------- */
+    /* ---------------- CATEGORY MODAL + CRUD ---------------- */
 
-const categoryModal = document.getElementById("categoryModal");
-const categoryForm = document.getElementById("categoryForm");
-const categoryModalTitle = document.getElementById("categoryModalTitle");
+    const categoryModal = document.getElementById("categoryModal");
+    const categoryForm = document.getElementById("categoryForm");
+    const categoryModalTitle = document.getElementById("categoryModalTitle");
 
-function openCategoryModal(edit = false, data = null) {
-    categoryModal.classList.remove("hidden");
+    function openCategoryModal(edit = false, data = null) {
+        categoryModal.classList.remove("hidden");
 
-    if (edit) {
-        categoryModalTitle.textContent = "Edit Category";
-        document.getElementById("categoryId").value = data.id;
-        document.getElementById("categoryName").value = data.name;
-    } else {
-        categoryModalTitle.textContent = "Add Category";
-        categoryForm.reset();
-        document.getElementById("categoryId").value = "";   // 🔥 IMPORTANT
+        if (edit) {
+            categoryModalTitle.textContent = "Edit Category";
+            document.getElementById("categoryId").value = data.id;
+            document.getElementById("categoryName").value = data.name;
+        } else {
+            categoryModalTitle.textContent = "Add Category";
+            categoryForm.reset();
+            document.getElementById("categoryId").value = "";   // 🔥 IMPORTANT
+        }
     }
-}
 
-function closeCategoryModal() {
-    categoryModal.classList.add("hidden");
-}
-document.getElementById("closeCategoryModal").onclick = closeCategoryModal;
+    function closeCategoryModal() {
+        categoryModal.classList.add("hidden");
+    }
+    document.getElementById("closeCategoryModal").onclick = closeCategoryModal;
 
-async function loadAdminCategories() {
-    const container = document.getElementById("adminCategoriesList");
-    container.innerHTML = "<p>Loading...</p>";
+    async function loadAdminCategories() {
+        const container = document.getElementById("adminCategoriesList");
+        container.innerHTML = "<p>Loading...</p>";
 
-    try {
-        const categories = await apiRequest("/api/categories");
+        try {
+            const categories = await apiRequest("/api/categories");
 
-        let html = `
+            let html = `
         <table class="table">
           <thead><tr><th>Name</th><th></th></tr></thead>
           <tbody>
         `;
 
-        categories.forEach(c => {
-            html += `
+            categories.forEach(c => {
+                html += `
             <tr>
               <td>${c.name}</td>
               <td>
@@ -786,55 +825,55 @@ async function loadAdminCategories() {
                 <button class="btn btn-light-outline btn-sm" data-delete-cat="${c.id}">Delete</button>
               </td>
             </tr>`;
-        });
+            });
 
-        html += "</tbody></table>";
-        container.innerHTML = html;
+            html += "</tbody></table>";
+            container.innerHTML = html;
 
-        container.querySelectorAll("[data-edit-cat]").forEach(btn => {
-            btn.onclick = () => {
-                openCategoryModal(true, {
-                    id: btn.dataset.editCat,
-                    name: btn.closest("tr").children[0].textContent
-                });
-            };
-        });
+            container.querySelectorAll("[data-edit-cat]").forEach(btn => {
+                btn.onclick = () => {
+                    openCategoryModal(true, {
+                        id: btn.dataset.editCat,
+                        name: btn.closest("tr").children[0].textContent
+                    });
+                };
+            });
 
-        container.querySelectorAll("[data-delete-cat]").forEach(btn => {
-            btn.onclick = async () => {
-                if (!confirm("Delete category?")) return;
+            container.querySelectorAll("[data-delete-cat]").forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm("Delete category?")) return;
 
-                await apiRequest(`/api/admin/categories/${btn.dataset.deleteCat}`, "DELETE", null, true);
-                showToast("Category deleted");
-                loadAdminCategories();
-            };
-        });
+                    await apiRequest(`/api/admin/categories/${btn.dataset.deleteCat}`, "DELETE", null, true);
+                    showToast("Category deleted");
+                    loadAdminCategories();
+                };
+            });
 
-    } catch {
-        container.innerHTML = "<p>Error loading categories</p>";
-    }
-}
-
-categoryForm.onsubmit = async (e) => {
-    e.preventDefault();
-
-    const id = document.getElementById("categoryId").value;
-    const name = document.getElementById("categoryName").value;
-
-    if (id) {
-        await apiRequest(`/api/admin/categories/${id}`, "PUT", { name }, true);
-        showToast("Category updated");
-    } else {
-        await apiRequest(`/api/admin/categories`, "POST", { name }, true);
-        showToast("Category added");
+        } catch {
+            container.innerHTML = "<p>Error loading categories</p>";
+        }
     }
 
-    closeCategoryModal();
-    loadAdminCategories();
-};
+    categoryForm.onsubmit = async (e) => {
+        e.preventDefault();
 
-document.getElementById("adminAddCategoryBtn").onclick = () =>
-    openCategoryModal(false);
+        const id = document.getElementById("categoryId").value;
+        const name = document.getElementById("categoryName").value;
+
+        if (id) {
+            await apiRequest(`/api/admin/categories/${id}`, "PUT", { name }, true);
+            showToast("Category updated");
+        } else {
+            await apiRequest(`/api/admin/categories`, "POST", { name }, true);
+            showToast("Category added");
+        }
+
+        closeCategoryModal();
+        loadAdminCategories();
+    };
+
+    document.getElementById("adminAddCategoryBtn").onclick = () =>
+        openCategoryModal(false);
 
 
     /* ---------------- USERS ---------------- */
@@ -869,39 +908,56 @@ document.getElementById("adminAddCategoryBtn").onclick = () =>
     }
 
     /* ---------------- ORDERS ---------------- */
-    async function loadAdminOrders() {
-        const box = document.getElementById("adminOrdersList");
-        box.innerHTML = "<p>Loading...</p>";
+    /* ============================================================
+   ADMIN — ORDERS LIST (UPDATED FOR COUPONS)
+============================================================ */
+async function loadAdminOrders() {
+    const box = document.getElementById("adminOrdersList");
+    box.innerHTML = "<p>Loading...</p>";
 
-        try {
-            const orders = await apiRequest("/api/admin/orders", "GET", null, true);
+    try {
+        const orders = await apiRequest("/api/admin/orders", "GET", null, true);
 
-            let html = `
-            <table class="table">
-              <thead>
-                <tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>Date</th></tr>
-              </thead>
-              <tbody>
-            `;
+        let html = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>User Email</th>
+            <th>Subtotal</th>
+            <th>Discount</th>
+            <th>Final Total</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
 
-            orders.forEach(o => {
-                html += `
-                <tr>
-                  <td>${o.id}</td>
-                  <td>${o.user_email}</td>
-                  <td>₹${o.total_amount}</td>
-                  <td>${o.status}</td>
-                  <td>${o.created_at}</td>
-                </tr>`;
-            });
+        orders.forEach(o => {
+            html += `
+        <tr>
+          <td>${o.id}</td>
+          <td>${o.user_email}</td>
+          <td>₹${o.subtotal}</td>
+          <td>₹${o.discount}</td>
+          <td><strong>₹${o.final_total}</strong></td>
+          <td>${o.payment_method || "N/A"}</td>
+          <td>${o.status}</td>
+          <td>${o.created_at}</td>
+        </tr>
+      `;
+        });
 
-            html += "</tbody></table>";
-            box.innerHTML = html;
+        html += `</tbody></table>`;
+        box.innerHTML = html;
 
-        } catch {
-            box.innerHTML = "<p>Error loading orders</p>";
-        }
+    } catch (err) {
+        box.innerHTML = "<p>Error loading orders</p>";
     }
+}
+
 
     /* ---------------- DASHBOARD ---------------- */
     async function loadAdminDashboard() {

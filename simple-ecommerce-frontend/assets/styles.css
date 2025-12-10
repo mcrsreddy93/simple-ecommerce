@@ -785,3 +785,15 @@ body {
   gap: 0.6rem;
   margin-top: 0.8rem;
 }
+
+.coupon-box {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.coupon-result {
+    margin-top: 8px;
+    font-weight: bold;
+    color: var(--primary);
+}

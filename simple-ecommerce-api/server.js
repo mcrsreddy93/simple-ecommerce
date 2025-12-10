@@ -20,7 +20,7 @@ db.serialize(() => {
   // Users
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
@@ -78,14 +78,16 @@ db.serialize(() => {
   // Orders
   db.run(`
     CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      total_amount REAL NOT NULL,
-      status TEXT DEFAULT 'PLACED',
-      payment_status TEXT DEFAULT 'PENDING',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(user_id) REFERENCES users(id)
-    )
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    total_amount INTEGER,      -- original subtotal
+    discount INTEGER DEFAULT 0,
+    final_amount INTEGER,      -- total after coupon
+    payment_method TEXT,
+    payment_status TEXT,
+    status TEXT DEFAULT 'Placed',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
   `);
 
   // Order Items
@@ -118,6 +120,19 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
   `);
+  // coupons table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE,
+    discount_type TEXT, -- 'percent' or 'flat'
+    discount_value REAL,
+    min_amount REAL DEFAULT 0,
+    expires_at DATETIME,
+    is_active INTEGER DEFAULT 1
+);
+
+  `);
 
   seedInitialData();
 });
@@ -145,6 +160,46 @@ function seedInitialData() {
       console.log("User  => email: user@example.com,  password: user123");
     }
   });
+
+  // Seed Coupons
+  db.get("SELECT COUNT(*) as count FROM coupons", (err, row) => {
+    if (err) return console.error("Coupon count error:", err);
+
+    if (row.count === 0) {
+      const couponStmt = db.prepare(
+        "INSERT INTO coupons (code, discount_type, discount_value, min_amount, expires_at, is_active) VALUES (?, ?, ?, ?, ?, ?)"
+      );
+
+      const coupons = [
+        ["WELCOME10", "percent", 10, 0, new Date(Date.now() + 60 * 86400000).toISOString(), 1],
+        ["FIRSTORDER15", "percent", 15, 500, new Date(Date.now() + 30 * 86400000).toISOString(), 1],
+        ["SUMMER20", "percent", 20, 1500, new Date(Date.now() + 90 * 86400000).toISOString(), 1],
+        ["FESTIVE25", "percent", 25, 2000, new Date(Date.now() + 45 * 86400000).toISOString(), 1],
+        ["ELECTRO18", "percent", 18, 3000, new Date(Date.now() + 120 * 86400000).toISOString(), 1],
+
+        ["SAVE150", "flat", 150, 1000, new Date(Date.now() + 45 * 86400000).toISOString(), 1],
+        ["SAVE300", "flat", 300, 2500, new Date(Date.now() + 60 * 86400000).toISOString(), 1],
+        ["FLAT500", "flat", 500, 4000, new Date(Date.now() + 90 * 86400000).toISOString(), 1],
+        ["GROCERY50", "flat", 50, 399, new Date(Date.now() + 30 * 86400000).toISOString(), 1],
+        ["TOY100", "flat", 100, 799, new Date(Date.now() + 75 * 86400000).toISOString(), 1],
+
+        ["FASHION15", "percent", 15, 999, new Date(Date.now() + 45 * 86400000).toISOString(), 1],
+        ["BEAUTY10", "flat", 100, 699, new Date(Date.now() + 60 * 86400000).toISOString(), 1],
+
+        ["OLD50", "percent", 50, 1000, new Date(Date.now() - 10 * 86400000).toISOString(), 0],
+        ["SALE2023", "flat", 200, 999, new Date(Date.now() - 30 * 86400000).toISOString(), 0],
+
+        ["MEGA1000", "flat", 1000, 4999, new Date(Date.now() + 180 * 86400000).toISOString(), 1],
+        ["BIGSALE30", "percent", 30, 3500, new Date(Date.now() + 120 * 86400000).toISOString(), 1],
+      ];
+
+      coupons.forEach(c => couponStmt.run(c));
+      couponStmt.finalize();
+
+      console.log("Seeded realistic coupons.");
+    }
+  });
+
 
   // Seed categories and products
   db.get("SELECT COUNT(*) as count FROM categories", (err, row) => {
@@ -2306,7 +2361,7 @@ app.delete("/api/cart/items/:id", authenticateToken, (req, res) => {
 
 // --- CHECKOUT + DUMMY PAYMENT ---
 app.post("/api/checkout", authenticateToken, (req, res) => {
-  const { payment_method } = req.body; // e.g., "card", "cod" - just for demo
+  const { payment_method, coupon_code, discount } = req.body;
 
   getOrCreateOpenCart(req.user.id, (err, cart) => {
     if (err) return res.status(500).json({ message: "Error loading cart" });
@@ -2324,18 +2379,36 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
         if (!items || items.length === 0)
           return res.status(400).json({ message: "Cart is empty" });
 
-        const total = items.reduce(
+        // Calculate subtotal
+        const subtotal = items.reduce(
           (sum, item) => sum + item.price * item.quantity,
           0
         );
 
+        // Apply discount from frontend (validated before)
+        const appliedDiscount = discount ? Number(discount) : 0;
+        const finalTotal = Math.max(subtotal - appliedDiscount, 0);
+
         // Create order
         db.run(
-          "INSERT INTO orders (user_id, total_amount, status, payment_status) VALUES (?, ?, 'PLACED', 'PAID')",
-          [req.user.id, total],
+          `
+          INSERT INTO orders 
+          (user_id, total_amount, discount, final_amount, payment_method, status, payment_status)
+          VALUES (?, ?, ?, ?, ?, 'PLACED', 'PAID')
+        `,
+          [
+            req.user.id,
+            subtotal,          // original total
+            appliedDiscount,   // discount applied
+            finalTotal,        // final payable
+            payment_method || "dummy"
+          ],
           function (err3) {
-            if (err3)
+            if (err3){
+              console.log(err3);
               return res.status(500).json({ message: "Error creating order" });
+            }
+              
 
             const orderId = this.lastID;
 
@@ -2344,42 +2417,38 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
               "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)"
             );
 
-            items.forEach((item) => {
-              stmt.run(orderId, item.product_id, item.quantity, item.price);
-            });
+            items.forEach((item) =>
+              stmt.run(orderId, item.product_id, item.quantity, item.price)
+            );
 
             stmt.finalize((err4) => {
               if (err4)
                 return res.status(500).json({ message: "Error saving order items" });
 
-              // Mark cart as CHECKED_OUT and clear items
-              db.run(
-                "UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?",
-                [cart.id],
-                (err5) => {
-                  if (err5)
-                    return res.status(500).json({ message: "Error updating cart" });
+              // Close cart
+              db.run("UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?", [cart.id], (err5) => {
+                if (err5)
+                  return res.status(500).json({ message: "Error updating cart" });
 
-                  db.run(
-                    "DELETE FROM cart_items WHERE cart_id = ?",
-                    [cart.id],
-                    (err6) => {
-                      if (err6)
-                        return res
-                          .status(500)
-                          .json({ message: "Error clearing cart" });
+                // Clear cart items
+                db.run("DELETE FROM cart_items WHERE cart_id = ?", [cart.id], (err6) => {
+                  if (err6)
+                    return res
+                      .status(500)
+                      .json({ message: "Error clearing cart" });
 
-                      // Dummy payment successful
-                      res.json({
-                        message: "Order placed & payment successful (dummy)",
-                        order_id: orderId,
-                        total,
-                        payment_method: payment_method || "dummy",
-                      });
-                    }
-                  );
-                }
-              );
+                  // SUCCESS
+                  res.json({
+                    message: "Order placed successfully",
+                    order_id: orderId,
+                    subtotal,
+                    discount: appliedDiscount,
+                    total: finalTotal,
+                    coupon_code: coupon_code || null,
+                    payment_method: payment_method || "dummy",
+                  });
+                });
+              });
             });
           }
         );
@@ -2388,46 +2457,82 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
   });
 });
 
+
 app.get("/api/user/address", authenticateToken, (req, res) => {
-    db.get(`SELECT * FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
-        if (err) return res.status(500).json({ message: "DB error" });
-        res.json(row || null);
-    });
+  db.get(`SELECT * FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+    res.json(row || null);
+  });
 });
 
 app.post("/api/user/address", authenticateToken, (req, res) => {
-    const {
-        full_name,
-        phone,
-        address_line1,
-        address_line2,
-        city,
-        state,
-        postal_code,
-        country
-    } = req.body;
+  const {
+    full_name,
+    phone,
+    address_line1,
+    address_line2,
+    city,
+    state,
+    postal_code,
+    country
+  } = req.body;
 
-    db.get(`SELECT id FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
-        if (row) {
-            // Update
-            db.run(`
+  db.get(`SELECT id FROM user_addresses WHERE user_id = ?`, [req.user.id], (err, row) => {
+    if (row) {
+      // Update
+      db.run(`
                 UPDATE user_addresses 
                 SET full_name=?, phone=?, address_line1=?, address_line2=?, city=?, state=?, postal_code=?, country=?, updated_at=CURRENT_TIMESTAMP  
                 WHERE user_id=?
             `, [full_name, phone, address_line1, address_line2, city, state, postal_code, country, req.user.id]);
 
-            res.json({ message: "Address updated" });
-        } else {
-            // Insert
-            db.run(`
+      res.json({ message: "Address updated" });
+    } else {
+      // Insert
+      db.run(`
                 INSERT INTO user_addresses 
                 (user_id, full_name, phone, address_line1, address_line2, city, state, postal_code, country)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [req.user.id, full_name, phone, address_line1, address_line2, city, state, postal_code, country]);
 
-            res.json({ message: "Address saved" });
-        }
+      res.json({ message: "Address saved" });
+    }
+  });
+});
+
+app.post("/api/coupons/validate", authenticateToken, (req, res) => {
+  const { code, cart_total } = req.body;
+
+  db.get(`SELECT * FROM coupons WHERE code = ? AND is_active = 1`, [code], (err, coupon) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+    if (!coupon) return res.status(400).json({ message: "Invalid coupon" });
+
+    // check expiry
+    if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+      return res.status(400).json({ message: "Coupon expired" });
+    }
+
+    // check min amount
+    if (cart_total < coupon.min_amount) {
+      return res.status(400).json({ message: `Minimum cart amount ₹${coupon.min_amount}` });
+    }
+
+    let discount = 0;
+    if (coupon.discount_type === "percent") {
+      discount = (cart_total * coupon.discount_value) / 100;
+    } else {
+      discount = coupon.discount_value;
+    }
+
+    if (discount > cart_total) discount = cart_total;
+
+    res.json({
+      success: true,
+      discount,
+      final_total: cart_total - discount,
+      coupon
     });
+  });
 });
 
 
@@ -2447,17 +2552,32 @@ app.get("/api/admin/users", authenticateToken, requireAdmin, (req, res) => {
 app.get("/api/admin/orders", authenticateToken, requireAdmin, (req, res) => {
   db.all(
     `
-    SELECT o.*, u.email as user_email 
+    SELECT o.*, u.email AS user_email
     FROM orders o
-    JOIN users u ON o.user_id = u.id
+    JOIN users u ON u.id = o.user_id
     ORDER BY o.created_at DESC
   `,
     (err, rows) => {
       if (err) return res.status(500).json({ message: "Error fetching orders" });
-      res.json(rows);
+
+      const formatted = rows.map(o => ({
+        id: o.id,
+        user_email: o.user_email,
+        subtotal: o.total_amount,
+        discount: o.discount || 0,
+        final_total: o.final_amount ?? o.total_amount,  // fallback for old orders
+        payment_method: o.payment_method || "unknown",
+        status: o.status,
+        created_at: o.created_at
+      }));
+
+      res.json(formatted);
     }
   );
 });
+
+
+
 
 // Admin: Create product
 app.post("/api/admin/products", authenticateToken, requireAdmin, (req, res) => {
@@ -2525,54 +2645,54 @@ app.delete(
 
 // Admin: Create category
 app.post("/api/admin/categories", authenticateToken, requireAdmin, (req, res) => {
-    const { name } = req.body;
+  const { name } = req.body;
 
-    if (!name) return res.status(400).json({ message: "Category name required" });
+  if (!name) return res.status(400).json({ message: "Category name required" });
 
-    db.run(
-        `INSERT INTO categories (name) VALUES (?)`,
-        [name],
-        function (err) {
-            if (err) return res.status(500).json({ message: "DB error" });
+  db.run(
+    `INSERT INTO categories (name) VALUES (?)`,
+    [name],
+    function (err) {
+      if (err) return res.status(500).json({ message: "DB error" });
 
-            res.json({
-                id: this.lastID,
-                name
-            });
-        }
-    );
+      res.json({
+        id: this.lastID,
+        name
+      });
+    }
+  );
 });
 
 
 app.put("/api/admin/categories/:id", authenticateToken, requireAdmin, (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
+  const { id } = req.params;
+  const { name } = req.body;
 
-    if (!name) return res.status(400).json({ message: "Category name required" });
+  if (!name) return res.status(400).json({ message: "Category name required" });
 
-    db.run(
-        `UPDATE categories SET name = ? WHERE id = ?`,
-        [name, id],
-        function (err) {
-            if (err) return res.status(500).json({ message: "DB error" });
+  db.run(
+    `UPDATE categories SET name = ? WHERE id = ?`,
+    [name, id],
+    function (err) {
+      if (err) return res.status(500).json({ message: "DB error" });
 
-            res.json({ message: "Category updated" });
-        }
-    );
+      res.json({ message: "Category updated" });
+    }
+  );
 });
 
 app.delete("/api/admin/categories/:id", authenticateToken, requireAdmin, (req, res) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    db.run(
-        `DELETE FROM categories WHERE id = ?`,
-        [id],
-        function (err) {
-            if (err) return res.status(500).json({ message: "DB error" });
+  db.run(
+    `DELETE FROM categories WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) return res.status(500).json({ message: "DB error" });
 
-            res.json({ message: "Category deleted" });
-        }
-    );
+      res.json({ message: "Category deleted" });
+    }
+  );
 });
 
 
@@ -2611,6 +2731,58 @@ app.get(
     });
   }
 );
+
+app.post("/api/admin/coupons", authenticateToken, requireAdmin, (req, res) => {
+  const { code, discount_type, discount_value, min_amount, expires_at, is_active } = req.body;
+
+  db.run(
+    `INSERT INTO coupons (code, discount_type, discount_value, min_amount, expires_at, is_active)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+    [code, discount_type, discount_value, min_amount, expires_at, is_active],
+    function (err) {
+      if (err) return res.status(500).json({ message: "DB error" });
+
+      res.json({ id: this.lastID, message: "Coupon created" });
+    }
+  );
+});
+
+app.put("/api/admin/coupons/:id", authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { code, discount_type, discount_value, min_amount, expires_at, is_active } = req.body;
+
+  db.run(
+    `UPDATE coupons SET 
+            code=?, discount_type=?, discount_value=?, min_amount=?, expires_at=?, is_active=?
+         WHERE id=?`,
+    [code, discount_type, discount_value, min_amount, expires_at, is_active, id],
+    err => {
+      if (err) return res.status(500).json({ message: "DB error" });
+      res.json({ message: "Coupon updated" });
+    }
+  );
+});
+
+app.delete("/api/admin/coupons/:id", authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  db.run(
+    `DELETE FROM coupons WHERE id = ?`,
+    [id],
+    err => {
+      if (err) return res.status(500).json({ message: "DB error" });
+      res.json({ message: "Coupon deleted" });
+    }
+  );
+});
+
+app.get("/api/admin/coupons", authenticateToken, requireAdmin, (req, res) => {
+  db.all(`SELECT * FROM coupons ORDER BY id DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+    res.json(rows);
+  });
+});
+
 
 // --- ROOT ---
 app.get("/", (req, res) => {
