@@ -2405,7 +2405,6 @@ app.post("/api/checkout", authenticateToken, (req, res) => {
           ],
           function (err3) {
             if (err3){
-              console.log(err3);
               return res.status(500).json({ message: "Error creating order" });
             }
               
@@ -2750,7 +2749,6 @@ app.post("/api/admin/coupons", authenticateToken, requireAdmin, (req, res) => {
 app.put("/api/admin/coupons/:id", authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;
   const { code, discount_type, discount_value, min_amount, expires_at, is_active } = req.body;
-
   db.run(
     `UPDATE coupons SET 
             code=?, discount_type=?, discount_value=?, min_amount=?, expires_at=?, is_active=?
@@ -2783,6 +2781,15 @@ app.get("/api/admin/coupons", authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
+// get coupons by id
+app.get("/api/admin/coupons/:id", authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  db.get(`SELECT * FROM coupons WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+    res.json(row);
+  });
+});
 
 // --- ROOT ---
 app.get("/", (req, res) => {

@@ -645,6 +645,7 @@ function adminPanelInit() {
                 case "categories": loadAdminCategories(); break;
                 case "users": loadAdminUsers(); break;
                 case "orders": loadAdminOrders(); break;
+                case "coupons": loadAdminCoupons(); break;
             }
         };
     });
@@ -911,14 +912,14 @@ function adminPanelInit() {
     /* ============================================================
    ADMIN — ORDERS LIST (UPDATED FOR COUPONS)
 ============================================================ */
-async function loadAdminOrders() {
-    const box = document.getElementById("adminOrdersList");
-    box.innerHTML = "<p>Loading...</p>";
+    async function loadAdminOrders() {
+        const box = document.getElementById("adminOrdersList");
+        box.innerHTML = "<p>Loading...</p>";
 
-    try {
-        const orders = await apiRequest("/api/admin/orders", "GET", null, true);
+        try {
+            const orders = await apiRequest("/api/admin/orders", "GET", null, true);
 
-        let html = `
+            let html = `
       <table class="table">
         <thead>
           <tr>
@@ -935,8 +936,8 @@ async function loadAdminOrders() {
         <tbody>
     `;
 
-        orders.forEach(o => {
-            html += `
+            orders.forEach(o => {
+                html += `
         <tr>
           <td>${o.id}</td>
           <td>${o.user_email}</td>
@@ -948,15 +949,149 @@ async function loadAdminOrders() {
           <td>${o.created_at}</td>
         </tr>
       `;
-        });
+            });
 
-        html += `</tbody></table>`;
-        box.innerHTML = html;
+            html += `</tbody></table>`;
+            box.innerHTML = html;
 
-    } catch (err) {
-        box.innerHTML = "<p>Error loading orders</p>";
+        } catch (err) {
+            box.innerHTML = "<p>Error loading orders</p>";
+        }
     }
-}
+
+    /* ============================================================
+   ADMIN — COUPONS MANAGEMENT
+============================================================ */
+
+    function openCouponModal(edit = false, data = null) {
+        const modal = document.getElementById("couponModal");
+        modal.classList.remove("hidden");
+        console.log("Opening coupon modal", edit, data);
+        if (edit) {
+            document.getElementById("couponModalTitle").textContent = "Edit Coupon";
+            document.getElementById("couponId").value = data.id;
+            document.getElementById("couponCode").value = data.code;
+            document.getElementById("couponType").value = data.discount_type;
+            document.getElementById("couponAmount").value = data.discount_value;
+            document.getElementById("couponMinValue").value = data.min_amount;
+            document.getElementById("couponExpiry").value = data.expires_at;
+            document.getElementById("couponStatus").value = data.is_active ? 1 : 0;
+        } else {
+            document.getElementById("couponModalTitle").textContent = "Add Coupon";
+            document.getElementById("couponForm").reset();
+            document.getElementById("couponId").value = "";
+        }
+    }
+
+    document.getElementById("closeCouponModal").onclick = () => {
+        document.getElementById("couponModal").classList.add("hidden");
+    };
+
+    document.getElementById("adminAddCouponBtn").onclick = () =>
+        openCouponModal(false);
+
+    /* LOAD COUPONS TABLE */
+    async function loadAdminCoupons() {
+        const box = document.getElementById("adminCouponsList");
+
+        box.innerHTML = "<p>Loading...</p>";
+        try {
+            const coupons = await apiRequest("/api/admin/coupons", "GET", null, true);
+
+            let html = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Discount Type</th>
+            <th>Discount Value</th>
+            <th>Min Cart</th>
+            <th>Expiry</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+            coupons.forEach(c => {
+                html += `
+        <tr>
+          <td>${c.code}</td>
+          <td>${c.discount_type}</td>
+          <td>₹${c.discount_value}</td>
+          <td>₹${c.min_amount}</td>
+          <td>${c.expires_at}</td>
+          <td>${c.is_active ? "Active" : "Inactive"}</td>
+          <td>
+            <button class="btn btn-light-outline btn-sm" data-edit-coupon="${c.id}">Edit</button>
+            <button class="btn btn-light-outline btn-sm" data-delete-coupon="${c.id}">Delete</button>
+          </td>
+        </tr>
+      `;
+            });
+
+            html += `</tbody></table>`;
+            box.innerHTML = html;
+
+            // Edit
+            box.querySelectorAll("[data-edit-coupon]").forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.dataset.editCoupon;
+                    const coupon = await apiRequest(`/api/admin/coupons/${id}`, "GET", null, true);
+                    openCouponModal(true, coupon);
+                };
+            });
+
+            // Delete
+            box.querySelectorAll("[data-delete-coupon]").forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.dataset.deleteCoupon;
+                    if (!confirm("Delete this coupon?")) return;
+
+                    await apiRequest(`/api/admin/coupons/${id}`, "DELETE", null, true);
+                    showToast("Coupon deleted");
+                    loadAdminCoupons();
+                };
+            });
+
+        } catch (err) {
+            box.innerHTML = "<p>Error loading coupons</p>";
+        }
+    }
+
+    /* SAVE COUPON */
+    const couponForm = document.getElementById("couponForm");
+    couponForm.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById("couponId").value;
+
+        const data = {
+            code: document.getElementById("couponCode").value,
+            discount_type: document.getElementById("couponType").value,
+            discount_value: parseInt(document.getElementById("couponAmount").value),
+            min_amount: parseInt(document.getElementById("couponMinValue").value),
+            expires_at: document.getElementById("couponExpiry").value,
+            is_active: parseInt(document.getElementById("couponStatus").value)
+        };
+
+        try {
+            if (id) {
+                await apiRequest(`/api/admin/coupons/${id}`, "PUT", data, true);
+                showToast("Coupon updated");
+            } else {
+                await apiRequest("/api/admin/coupons", "POST", data, true);
+                showToast("Coupon added");
+            }
+
+            document.getElementById("couponModal").classList.add("hidden");
+            loadAdminCoupons();
+
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
 
 
     /* ---------------- DASHBOARD ---------------- */

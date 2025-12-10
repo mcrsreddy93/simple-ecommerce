@@ -36,6 +36,7 @@
                 <li><button class="admin-tab-btn" data-tab="categories">Categories</button></li>
                 <li><button class="admin-tab-btn" data-tab="users">Users</button></li>
                 <li><button class="admin-tab-btn" data-tab="orders">Orders</button></li>
+                <li><button class="admin-tab-btn" data-tab="coupons">Coupons</button></li>
             </ul>
         </aside>
 
@@ -73,6 +74,13 @@
                 <h2>Orders</h2>
                 <div id="adminOrdersList" class="table-wrapper"></div>
             </div>
+            <!-- Coupons -->
+            <div class="admin-tab" id="tab-coupons">
+                <h2>Coupons</h2>
+                <button id="adminAddCouponBtn" class="btn btn-primary">+ Add Coupon</button>
+                <div id="adminCouponsList" class="table-wrapper"></div>
+            </div>
+
 
         </section>
     </main>
@@ -141,6 +149,60 @@
                     <button type="button" id="closeCategoryModal" class="btn btn-light-outline">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Coupon Modal -->
+    <div id="couponModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="couponModalTitle">Add Coupon</h3>
+
+            <form id="couponForm" class="form">
+                <input type="hidden" id="couponId">
+
+                <div class="form-group">
+                    <label>Coupon Code</label>
+                    <input id="couponCode" class="input" placeholder="NEWYEAR100" required />
+                </div>
+                
+                <div class="form-group">
+                    <label>Discount Type</label>
+                    <!-- add two types: "percent" and "flat" -->
+                    <select id="couponType" class="input input-select" required>
+                        <option value="percent">Percent</option>
+                        <option value="flat">Flat</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Discount Amount (₹)</label>
+                    <input id="couponAmount" type="number" class="input" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Minimum Cart Value (₹)</label>
+                    <input id="couponMinValue" type="number" class="input" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Expiry Date</label>
+                    <input id="couponExpiry" type="datetime-local" class="input" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="couponStatus" class="input input-select">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" id="closeCouponModal" class="btn btn-light-outline">Cancel</button>
+                </div>
+            </form>
+
         </div>
     </div>
 
