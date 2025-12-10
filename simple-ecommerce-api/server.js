@@ -2843,6 +2843,29 @@ app.get("/api/admin/coupons/:id", authenticateToken, requireAdmin, (req, res) =>
   });
 });
 
+app.put("/api/admin/orders/:id/status", authenticateToken, requireAdmin, (req, res) => {
+  const orderId = req.params.id;
+  const { status } = req.body;
+
+  const valid = ["PLACED", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"];
+  if (!valid.includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+
+  db.run(
+    `UPDATE orders SET status = ? WHERE id = ?`,
+    [status, orderId],
+    function (err) {
+      if (err) {
+        console.error("Status update error", err);
+        return res.status(500).json({ message: "Error updating order status" });
+      }
+      res.json({ message: "Status updated" });
+    }
+  );
+});
+
+
 // --- ROOT ---
 app.get("/", (req, res) => {
   res.json({

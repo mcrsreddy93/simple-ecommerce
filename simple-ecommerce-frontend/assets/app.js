@@ -913,13 +913,13 @@ function adminPanelInit() {
    ADMIN — ORDERS LIST (UPDATED FOR COUPONS)
 ============================================================ */
     async function loadAdminOrders() {
-        const box = document.getElementById("adminOrdersList");
-        box.innerHTML = "<p>Loading...</p>";
+    const box = document.getElementById("adminOrdersList");
+    box.innerHTML = "<p>Loading...</p>";
 
-        try {
-            const orders = await apiRequest("/api/admin/orders", "GET", null, true);
+    try {
+        const orders = await apiRequest("/api/admin/orders", "GET", null, true);
 
-            let html = `
+        let html = `
       <table class="table">
         <thead>
           <tr>
@@ -930,14 +930,23 @@ function adminPanelInit() {
             <th>Final Total</th>
             <th>Payment</th>
             <th>Status</th>
+            <th>Update</th>
             <th>Date</th>
           </tr>
         </thead>
         <tbody>
     `;
 
-            orders.forEach(o => {
-                html += `
+        const ALL_STATUS = [
+            "PLACED",
+            "PACKED",
+            "SHIPPED",
+            "OUT_FOR_DELIVERY",
+            "DELIVERED"
+        ];
+
+        orders.forEach(o => {
+            html += `
         <tr>
           <td>${o.id}</td>
           <td>${o.user_email}</td>
@@ -945,19 +954,64 @@ function adminPanelInit() {
           <td>₹${o.discount}</td>
           <td><strong>₹${o.final_total}</strong></td>
           <td>${o.payment_method || "N/A"}</td>
-          <td>${o.status}</td>
+
+          <td>
+            <span class="badge">${o.status}</span>
+          </td>
+
+          <td>
+            <select class="input input-select admin-status-select" data-order-id="${o.id}">
+              <option value="">-- Change --</option>
+              ${ALL_STATUS
+                .map(s => `<option value="${s}" ${s === o.status ? "selected" : ""}>${s}</option>`)
+                .join("")}
+            </select>
+
+            <button class="btn btn-primary btn-sm" data-update-status="${o.id}">
+              Save
+            </button>
+          </td>
+
           <td>${o.created_at}</td>
         </tr>
       `;
-            });
+        });
 
-            html += `</tbody></table>`;
-            box.innerHTML = html;
+        html += `</tbody></table>`;
+        box.innerHTML = html;
 
-        } catch (err) {
-            box.innerHTML = "<p>Error loading orders</p>";
-        }
+        // Handle Status Update Button
+        box.querySelectorAll("[data-update-status]").forEach(btn => {
+            btn.onclick = async () => {
+                const orderId = btn.dataset.updateStatus;
+                const select = box.querySelector(`select[data-order-id="${orderId}"]`);
+                const newStatus = select.value;
+
+                if (!newStatus) {
+                    showToast("Select a status first");
+                    return;
+                }
+
+                try {
+                    await apiRequest(`/api/admin/orders/${orderId}/status`, "PUT", {
+                        status: newStatus
+                    }, true);
+
+                    showToast("Order status updated");
+                    loadAdminOrders(); // Refresh table after update
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error updating status");
+                }
+            };
+        });
+
+    } catch (err) {
+        console.error(err);
+        box.innerHTML = "<p>Error loading orders</p>";
     }
+}
+
 
     /* ============================================================
    ADMIN — COUPONS MANAGEMENT
