@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-page="profile">
+<head>
+    <meta charset="UTF-8" />
+    <title>My Profile - MyShop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+
+<body data-page="profile">
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand">
+                <span class="brand-logo">🛒</span>
+                <span class="brand-text">MyShop</span>
+            </a>
+        </div>
+        <nav class="nav-center">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="cart.html" class="nav-link">Cart</a>
+            <a href="checkout.html" class="nav-link">Checkout</a>
+            <a href="profile.html" class="nav-link active">Profile</a>
+        </nav>
+        <div class="nav-right" id="navUserSection"></div>
+    </header>
+
+    <!-- Profile Page -->
+    <main class="page-shell">
+        <section class="section">
+
+            <div class="section-header">
+                <div>
+                    <h2>My Profile</h2>
+                    <p class="section-subtitle">View and update your personal information</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+
+                <!-- Left Column -->
+                <div>
+
+                    <!-- Personal Info -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Personal Information</h3>
+                        </div>
+
+                        <div class="card-body">
+                            <form id="profileForm" class="form">
+
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input id="profileName" class="input" placeholder="Your Name" required />
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Phone</label>
+                                    <input id="profilePhone" class="input" placeholder="Phone Number" />
+                                </div>
+
+                                <button class="btn btn-primary mt-1" type="submit">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div>
+
+                    <!-- Change Password -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Change Password</h3>
+                        </div>
+
+                        <div class="card-body">
+                            <form id="passwordForm" class="form">
+
+                                <div class="form-group">
+                                    <label>Old Password</label>
+                                    <input id="oldPassword" type="password" class="input" placeholder="Old password" required />
+                                </div>
+
+                                <div class="form-group">
+                                    <label>New Password</label>
+                                    <input id="newPassword" type="password" class="input" placeholder="New password" required />
+                                </div>
+
+                                <button class="btn btn-primary mt-1" type="submit">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <div>
+                <h4>MyShop</h4>
+                <p>Your trusted demo store.</p>
+            </div>
+
+            <div>
+                <h4>Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="cart.html">Cart</a></li>
+                    <li><a href="checkout.html">Checkout</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4>Account</h4>
+                <ul>
+                    <li><a href="login.html">Login</a></li>
+                    <li><a href="register.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="footer-bottom">
+            &copy; <span id="footerYear"></span> MyShop. Built for learning.
+        </p>
+    </footer>
+
+    <!-- App Script -->
+    <script src="assets/app.js"></script>
+</body>
+</html>

@@ -24,6 +24,7 @@ db.serialize(() => {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
+      phone NUMBER,
       is_admin INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -160,12 +161,12 @@ function seedInitialData() {
       const userPassword = bcrypt.hashSync("user123", 10);
 
       db.run(
-        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
-        ["Admin", "admin@example.com", adminPassword, 1]
+        "INSERT INTO users (name, email, password, phone, is_admin) VALUES (?, ?, ?, ?, ?)",
+        ["Admin", "admin@example.com", adminPassword, 9999999999, 1]
       );
       db.run(
-        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
-        ["Test User", "user@example.com", userPassword, 0]
+        "INSERT INTO users (name, email, password, phone, is_admin) VALUES (?, ?, ?, ?, ?)",
+        ["Test User", "user@example.com", userPassword, 8888888888, 0]
       );
 
       console.log("Seeded admin and test user:");
@@ -2426,7 +2427,6 @@ app.post("/api/checkout", authenticateToken, async (req, res) => {
             `SELECT * FROM credit_cards WHERE card_number=? AND cvv=?`,
             [card.number, card.cvv],
             (err, dbCard) => {
-              console.log(err, dbCard);
               if (err) return res.status(500).json({ message: "Card lookup error" });
               if (!dbCard) return res.status(400).json({ message: "Invalid card" });
 
@@ -2595,6 +2595,65 @@ app.get("/api/user/orders/:id/items", authenticateToken, (req, res) => {
   );
 });
 
+app.get("/api/me", authenticateToken, (req, res) => {
+    db.get(
+        "SELECT id, name, email, phone FROM users WHERE id = ?",
+        [req.user.id],
+        (err, row) => {
+            if (err || !row) return res.status(500).json({ message: "User not found" });
+            res.json(row);
+        }
+    );
+});
+
+
+app.put("/api/user/profile", authenticateToken, (req, res) => {
+    const { name, phone } = req.body;
+
+    if (!name) return res.status(400).json({ message: "Name is required" });
+
+    db.run(
+        "UPDATE users SET name = ?, phone = ? WHERE id = ?",
+        [name, phone || null, req.user.id],
+        function (err) {
+            if (err) return res.status(500).json({ message: "Error updating user" });
+            res.json({ message: "Profile updated successfully" });
+        }
+    );
+});
+
+  
+app.put("/api/user/change-password", authenticateToken, (req, res) => {
+    const { old_password, new_password } = req.body;
+
+    if (!old_password || !new_password)
+        return res.status(400).json({ message: "Both passwords are required" });
+
+    db.get("SELECT password FROM users WHERE id = ?", [req.user.id], (err, row) => {
+        if (err || !row) return res.status(500).json({ message: "User not found" });
+
+        const match = bcrypt.compareSync(old_password, row.password);
+        if (!match) return res.status(400).json({ message: "Incorrect old password" });
+
+        const hashed = bcrypt.hashSync(new_password, 10);
+
+        db.run(
+            "UPDATE users SET password = ? WHERE id = ?",
+            [hashed, req.user.id],
+            function (err2) {
+                if (err2)
+                    return res
+                        .status(500)
+                        .json({ message: "Error updating password" });
+
+                res.json({ message: "Password updated successfully" });
+            }
+        );
+    });
+});
+
+
+// --- COUPON ROUTES ---
 
 app.post("/api/coupons/validate", authenticateToken, (req, res) => {
   const { code, cart_total } = req.body;

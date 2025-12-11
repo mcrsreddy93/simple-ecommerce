@@ -248,12 +248,14 @@ function authPagesInit() {
             const name = form.name.value.trim();
             const email = form.email.value.trim();
             const password = form.password.value.trim();
+            const phone = form.phone.value.trim();
 
             try {
                 await apiRequest("/api/auth/register", "POST", {
                     name,
                     email,
                     password,
+                    phone
                 });
 
                 showToast("Account created");
@@ -1206,6 +1208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCartCount();
     loadUserOrders();
     loadAdminCards();
+    profilePageInit();
 
     const footerYear = document.getElementById("footerYear");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
@@ -1415,3 +1418,56 @@ document.getElementById("cardForm").onsubmit = async (e) => {
     document.getElementById("cardModal").classList.add("hidden");
     loadAdminCards();
 };
+
+async function profilePageInit() {
+    const page = document.body.getAttribute("data-page");
+    if (page !== "profile") return;
+
+    try {
+        const user = await apiRequest("/api/me", "GET", null, true);
+        // Pre-fill existing user data 👇
+        document.getElementById("profileName").value = user.name || "";
+        document.getElementById("profilePhone").value = user.phone || "";
+
+    } catch (err) {
+        showToast("Login required");
+        location.href = "login.html";
+    }
+
+    /* SAVE PROFILE */
+    const profileForm = document.getElementById("profileForm");
+    profileForm.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const data = {
+            name: document.getElementById("profileName").value,
+            phone: document.getElementById("profilePhone").value
+        };
+
+        try {
+            await apiRequest("/api/user/profile", "PUT", data, true);
+            showToast("Profile updated");
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+
+    /* CHANGE PASSWORD */
+    const passwordForm = document.getElementById("passwordForm");
+    passwordForm.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const data = {
+            old_password: document.getElementById("oldPassword").value,
+            new_password: document.getElementById("newPassword").value
+        };
+
+        try {
+            await apiRequest("/api/user/change-password", "PUT", data, true);
+            showToast("Password updated");
+            passwordForm.reset();
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+}
