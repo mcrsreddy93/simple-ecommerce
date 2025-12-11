@@ -739,8 +739,8 @@ function adminPanelInit() {
                   <td>${p.stock}</td>
                   <td>${p.category_id}</td>
                   <td>
-                    <button class="btn btn-light-outline btn-sm" data-edit="${p.id}">Edit</button>
-                    <button class="btn btn-light-outline btn-sm" data-delete="${p.id}">Delete</button>
+                    <button class="action-btn action-edit" data-edit="${p.id}">Edit</button>
+                    <button class="action-btn action-delete" data-delete="${p.id}">Delete</button>
                   </td>
                 </tr>`;
             });
@@ -844,8 +844,8 @@ function adminPanelInit() {
             <tr>
               <td>${c.name}</td>
               <td>
-                <button class="btn btn-light-outline btn-sm" data-edit-cat="${c.id}">Edit</button>
-                <button class="btn btn-light-outline btn-sm" data-delete-cat="${c.id}">Delete</button>
+                <button class="action-btn action-edit" data-edit-cat="${c.id}">Edit</button>
+                <button class="action-btn action-delete" data-delete-cat="${c.id}">Delete</button>
               </td>
             </tr>`;
             });
@@ -1100,8 +1100,8 @@ function adminPanelInit() {
           <td>${c.expires_at}</td>
           <td>${c.is_active ? "Active" : "Inactive"}</td>
           <td>
-            <button class="btn btn-light-outline btn-sm" data-edit-coupon="${c.id}">Edit</button>
-            <button class="btn btn-light-outline btn-sm" data-delete-coupon="${c.id}">Delete</button>
+            <button class="action-btn action-edit" data-edit-coupon="${c.id}">Edit</button>
+            <button class="action-btn action-delete" data-delete-coupon="${c.id}">Delete</button>
           </td>
         </tr>
       `;
@@ -1355,8 +1355,8 @@ async function loadAdminCards() {
                 <td>₹${c.balance}</td>
                 <td>${c.status}</td>
                 <td>
-                    <button class="btn btn-light-outline btn-sm" data-edit-card="${c.id}">Edit</button>
-                    <button class="btn btn-light-outline btn-sm" data-delete-card="${c.id}">Delete</button>
+                    <button class="action-btn action-edit" data-edit-card="${c.id}">Edit</button>
+                    <button class="action-btn action-delete" data-delete-card="${c.id}">Delete</button>
                 </td>
             </tr>
             `;

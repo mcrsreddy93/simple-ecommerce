@@ -868,3 +868,46 @@ body {
 .modal-title {
     margin-bottom: 10px;
 }
+/* -----------------------------------
+   Beautiful Admin Action Buttons
+----------------------------------- */
+
+.action-btn {
+    padding: 6px 14px;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-edit {
+    background: #eef5ff;
+    color: #1a73e8;
+    border: 1px solid #c7dbff;
+}
+
+.action-edit:hover {
+    background: #dbe9ff;
+    border-color: #99c1ff;
+}
+
+.action-delete {
+    background: #ffeceb;
+    color: #d93025;
+    border: 1px solid #ffc8c5;
+}
+
+.action-delete:hover {
+    background: #ffd8d6;
+    border-color: #ff9b96;
+}
+
+/* Small icons */
+.action-btn i {
+    font-style: normal;
+    font-weight: bold;
+}
