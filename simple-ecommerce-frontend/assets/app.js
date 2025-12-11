@@ -1209,6 +1209,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadUserOrders();
     loadAdminCards();
     profilePageInit();
+    forgotPasswordInit();
+    resetPasswordInit();
 
     const footerYear = document.getElementById("footerYear");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
@@ -1471,3 +1473,94 @@ async function profilePageInit() {
         }
     };
 }
+
+function forgotPasswordInit() {
+    const page = document.body.getAttribute("data-page");
+    if (page !== "forgot-password") return;
+    const emailInput = document.getElementById("fpEmail");
+    const sendBtn = document.getElementById("sendOtpBtn");
+    const msg = document.getElementById("fpMessage");
+
+    sendBtn.onclick = async () => {
+        const email = emailInput.value.trim();
+        if (!email) return showToast("Enter your email");
+
+        try {
+            const res = await apiRequest("/api/reset-password/send-otp", "POST", { email });
+
+            msg.innerHTML = `Dummy OTP: <strong>${res.otp}</strong>`;
+            localStorage.setItem("reset_email", email);
+
+            showToast("OTP Generated! your OTP  is: " + res.otp,10000);
+
+            setTimeout(() => location.href = "reset-password.html", 1200);
+
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+}
+
+function resetPasswordInit() {
+    const page = document.body.getAttribute("data-page");
+    if (page !== "reset-password") return;
+
+    const email = localStorage.getItem("reset_email");
+    if (!email) return location.href = "forgot-password.html";
+
+    const otpDisplay = document.getElementById("otpDisplay");
+    otpDisplay.textContent = `Resetting password for: ${email}`;
+
+    const otpInput = document.getElementById("otpInput");
+    const newPass = document.getElementById("newPasswordInput");
+    const verifyBtn = document.getElementById("verifyOtpBtn");
+    const resendBtn = document.getElementById("resendOtpBtn");
+    const timerEl = document.getElementById("timer");
+
+    let timeLeft = 60;
+    verifyBtn.disabled = false;
+
+    const countdown = setInterval(() => {
+        timerEl.textContent = `Time left: ${timeLeft}s`;
+        timeLeft--;
+
+        if (timeLeft < 0) {
+            clearInterval(countdown);
+            timerEl.textContent = "OTP expired!";
+            verifyBtn.disabled = true;
+            resendBtn.classList.remove("hidden");
+        }
+    }, 1000);
+
+    verifyBtn.onclick = async () => {
+        const otp = otpInput.value.trim();
+        const new_password = newPass.value.trim();
+
+        if (!otp || !new_password) {
+            return showToast("Enter OTP & new password");
+        }
+
+        try {
+            await apiRequest("/api/reset-password/verify", "POST", {
+                email,
+                otp,
+                new_password
+            });
+
+            showToast("Password reset successful!");
+
+            setTimeout(() => {
+                localStorage.removeItem("reset_email");
+                location.href = "login.html";
+            }, 1500);
+
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+
+    resendBtn.onclick = () => {
+        location.href = "forgot-password.html";
+    };
+}
+

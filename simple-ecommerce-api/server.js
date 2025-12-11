@@ -15,6 +15,7 @@ app.use(express.json());
 
 // --- DB SETUP ---
 const db = new sqlite3.Database("./ecommerce.db");
+let otpStore = {};
 
 db.serialize(() => {
   // Users
@@ -2196,7 +2197,6 @@ app.post("/api/auth/login", (req, res) => {
   db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
     if (err) return res.status(500).json({ message: "DB error" });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
-
     const valid = bcrypt.compareSync(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
@@ -3112,6 +3112,60 @@ app.put("/api/admin/orders/:id/status", authenticateToken, requireAdmin, (req, r
         return res.status(500).json({ message: "Error updating order status" });
       }
       res.json({ message: "Status updated" });
+    }
+  );
+});
+
+app.post("/api/reset-password/send-otp", (req, res) => {
+  const { email } = req.body;
+
+  db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
+    if (err || !user) {
+      return res.status(400).json({ message: "Email not found" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000); // 6 digit OTP
+
+    otpStore[email] = {
+      otp,
+      expires_at: Date.now() + 60 * 1000, // 60 seconds validity
+    };
+
+    return res.json({
+      message: "OTP generated",
+      otp // dummy (frontend displays)
+    });
+  });
+});
+
+app.post("/api/reset-password/verify", (req, res) => {
+  const { email, otp, new_password } = req.body;
+  const record = otpStore[email];
+  if (!record) {
+    return res.status(400).json({ message: "OTP not requested" });
+  }
+
+  if (Date.now() > record.expires_at) {
+    return res.status(400).json({ message: "OTP expired" });
+  }
+
+  if (otp != record.otp) {
+    return res.status(400).json({ message: "Invalid OTP" });
+  }
+
+  const hashed = bcrypt.hashSync(new_password, 10);
+
+  // Update password in DB
+  db.run(
+    "UPDATE users SET password = ? WHERE email = ?",
+    [hashed, email],
+    (err) => {
+      if (err) return res.status(500).json({ message: "Error updating password" });
+
+      delete otpStore[email]; // Remove OTP
+      return res.json({
+        message: "Password reset successful"
+      });
     }
   );
 });
